@@ -2,18 +2,18 @@ import os.path
 
 import pandas as pd
 import re
-import csv
 
 
 class DelLog():
-    def __init__(self, idx, content):
+    def __init__(self, idx, content, regexp):
+        self.regexp=regexp
         self.content = content
         self.idx = idx
 
     def __str__(self):
-        return f'content : {self.content}    idx : {self.idx}    xlsxIdx : {self.getXlsxIdx()}'
+        return f'regexp : {self.regexp}    content : {self.content}    idx : {self.idx}    xlsIdx : {self.getXlsIdx()}'
 
-    def getXlsxIdx(self):
+    def getXlsIdx(self):
         return self.idx + 2
 
 
@@ -25,7 +25,6 @@ class MyFileter():
         """
         self.df = df
         self.parenthèses = parenthèses
-
     #
     # def getParenthesis(self, productName):
     #     """
@@ -71,67 +70,53 @@ class MyFileter():
     #         filteredNames.append(newStr)
     #     return filteredNames
 
+
+    def replaceRegexpStrs(self, targetStrs, repalceStrs):
+        """
+        키워드를 제거하거나 변경할 때 사용한다.
+        :param targetStrs: 바꾸고자 하는 문자열
+        :param repalceStrs: 이 문자열로 바꾸자
+        :return: filteredNames, del_logs
+        """
+        productNames = df['상품명'].tolist()
+        filteredNames = []
+        delLogs = []
+        for i, val_i in enumerate(productNames):  # [상품1, 상품2, 상품3]
+            tmp_val_i = val_i
+            filteredName = ''
+            for j, val_j in enumerate(targetStrs):
+                regex = re.compile(f'{val_j}')
+                indicies = [i for i in re.finditer(regex, tmp_val_i)]  # 문자를 찾은 인덱스 정보
+                LEN = len(indicies)
+                for k in range(LEN):  # 특수문자가 있는 인덱스의 자리
+
+                    #잘라내서 붙일 인덱스
+                    startIdx = 0 if k == 0 else indicies[k - 1].span()[1] + 1
+                    endIdx = indicies[k].span()[0]
+                    filteredName += val_i[startIdx:endIdx] + repalceStrs[j] +'' # 단순삭제가 아니라 replace해야한다.
+                    tmp_val_i = filteredName
+
+                    #잘라내서 없앨 인덱스
+                    del_start_idx = indicies[k].span()[0]
+                    del_end_idx = indicies[k].span()[1]
+                    delLogContent = val_i[del_start_idx:del_end_idx]
+                    delLogs.append(DelLog(i, delLogContent, val_j))
+                # 마지막에 처리 한번 더 해야한다.
+                if LEN > 0:
+                    startIdx = indicies[LEN - 1].span()[1]
+                    filteredName += val_i[startIdx:]
+            filteredNames.append(filteredName if filteredName != '' else val_i)
+        return filteredNames, delLogs
+
     def removeChars(self, chars):
         """
-        chars에 있는 문자를 지운다. 단순 remove임.
+        chars에 있는 문자를 지운다. 단순 remove임. 보통 특수문자 제거에 사용한다.
         :param chars: [/, \, =,,,]
         :return: [newName1, newName2,,,]
         """
-        productNames = df['상품명'].tolist()
-        filteredNames = []
-        delLogs = []
+        replaceChars=['']*len(chars)
+        filteredNames, delLogs = self.replaceRegexpStrs(chars, replaceChars)
 
-        for i, val in enumerate(productNames):  # [상품1, 상품2, 상품3]
-            filteredName = val
-            for j in chars:  #
-                regex = re.compile(f'{j}')
-                indicies = [i for i in re.finditer(regex, filteredName)]  # 문자를 찾은 인덱스 정보
-                for k in indicies:  # 특수문자가 있는 인덱스의 자리
-                    startIdx = k.span()[0]
-                    endIdx = k.span()[1]
-                    delLogContent = filteredName[startIdx:endIdx]
-                    delLogs.append(DelLog(i, delLogContent))
-
-                    filteredName = filteredName[:startIdx] + filteredName[endIdx:]
-            filteredNames.append(filteredName)
-        return filteredNames, delLogs
-    #
-    # replaceChars를 이렇게 짜면 로그를 남길 수 없다.
-    # def replaceChars(self, targetStrs, replaceStrs):
-    #     """
-    #     :param targetStrs: 바꿔지는 문자열  ['a', 'b', ,,]
-    #     :param replaceStrs: 바꾸고자 하는 문자열 ['A, 'B',,,]
-    #     :return:
-    #     """
-    #     productNames = df['상품명'].tolist()
-    #     filteredNames = []
-    #     delLogs = []
-    #     for i in range(len(productNames)):
-    #         productName = productNames[i]
-    #         for j in range(len(targetStrs)):
-    #             productName = productName.replace(targetStrs[j], replaceStrs[j])
-    #             if productName.find(targetStrs[j]) != -1:
-    #                 delLogs.append(DelLog(i, targetStrs[j]))
-    #         filteredNames.append(productName)
-    #     return filteredNames
-
-    def replaceChars(self, targetStrs, repalceStrs):
-        productNames = df['상품명'].tolist()
-        filteredNames = []
-        delLogs = []
-
-        for i, val_i in enumerate(productNames):  # [상품1, 상품2, 상품3]
-            filteredName = val_i
-            for j, val_j in enumerate(targetStrs):
-                regex = re.compile(f'{val_j}')
-                indicies = [i for i in re.finditer(regex, filteredName)]  # 문자를 찾은 인덱스 정보
-                for k in indicies:  # 특수문자가 있는 인덱스의 자리
-                    startIdx = k.span()[0]
-                    endIdx = k.span()[1]
-                    filteredName = filteredName[:startIdx] + replacedStrs[j] +filteredName[endIdx:] # 단순삭제가 아니라 replace해야한다.
-                    delLogContent = filteredName[startIdx:endIdx]
-                    delLogs.append(DelLog(i, delLogContent))
-            filteredNames.append(filteredName)
         return filteredNames, delLogs
 
     def removeDuplicatedSpace(self, productNames):
@@ -142,51 +127,20 @@ class MyFileter():
             trimedStr.append(newStr)
         return trimedStr
 
-    # class MatchInfo:
-    #     def __init__(self):
-    #         self.idx = None
-    #         self.matches = []
-    #
-    #     def __str__(self):
-    #         return f'idx : {self.idx} matches : {self.matches}'
-    # #
-    # def getMatchInfos(self, words):
-    #     productNames = df['상품명'].tolist()
-    #     matchInfos = []
-    #     for i in range(len(productNames)):
-    #         match = self.MatchInfo()  # 이너클래스에 직접적으로 접근할 수 없다.
-    #         match.idx = i
-    #
-    #         for j in words:
-    #             if productNames[i].find(j) != -1:  # 못찾으면 -1반환
-    #                 match.matches.append(j)
-    #         matchInfos.append(match)
-    #     return matchInfos
-
     def removeReg(self, regStrs):
         """
         :param regStrs: [r's+' r'(0-9)+', ,,,,]
         :return: regStrs에 해당하는 부분을 찾아서 없앤다.
         """
-        productNames = df['상품명'].tolist()
-        filteredNames = []
-        del_logs=[]
-        for i, i_val in enumerate(productNames):  # [상품1, 상품2, 상품3]
-            filteredName = i_val
-            for j in regStrs:
-                regex = re.compile(j)
-                indicies = [i for i in re.finditer(regex, filteredName)]  # 문자를 찾은 인덱스 정보. 인덱스는 i에서 찾고
-                for k in indicies:  # 반영은 filteredName에서 한다.
-                    startIdx = k.span()[0]
-                    endIdx = k.span()[1]
-                    del_content = DelLog(i, filteredName[startIdx:endIdx])
-                    filteredName = filteredName[:startIdx] + filteredName[endIdx:]
-                    del_logs.append(DelLog(i, del_content))
-            filteredNames.append(filteredName)
-            filteredNames.append(filteredName)
+        tmp=['']*len(regStrs)
+
+        filteredNames, del_logs, = self.replaceRegexpStrs(regStrs, tmp)
         return filteredNames, del_logs
 
-
+def make_log_df(del_logs):
+    del_log1_df = pd.DataFrame({'정규표현식': [i.regexp for i in del_logs], '삭제된 문자열': [i.content for i in del_logs],
+                                '엑셀 idx': [i.getXlsIdx() for i in del_logs]})
+    return del_log1_df
 
 if __name__ == '__main__':
     # df 출력설정.
@@ -209,10 +163,11 @@ if __name__ == '__main__':
         , '아이윙스', '피포페인팅', '하이셀', '에이브', '이거찜', 'PVC', '리빙114', '슬림스', '모던스', 'SNW', 'ABM도매콜', '애니포트', '헤어슈슈', '베이비캠프',
                     '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '템플러', '애니포트'
                     ]
-    charFiltered, delLogs1 = myFilter.removeChars(removingStrs)
+    charFiltered, del_logs1 = myFilter.removeChars(removingStrs)
     myFilter.df['상품명'] = pd.Series(charFiltered)
+    print('키워드 지우기')
     print(myFilter.df['상품명'].head(10))
-    print('specialChars :', myFilter.df['상품명'].count())
+    print(myFilter.df['상품명'].count())
     print()
     print()
 
@@ -220,25 +175,25 @@ if __name__ == '__main__':
     targetStrs = ['\/', '\(', '\)', '\[', '\]', '\{', '\}']  # regexp가 아니라서 이스케이프 안해도 된다. regexp일 때는 이스케이프 해야함.
     replacedStrs = [' ', ' ', ' ', ' ', ' ', ' ', ' ']
     assert len(targetStrs) == len(replacedStrs), f'{len(targetStrs)}=={len(replacedStrs)}'
-    replacedStrs, delLogs2  = myFilter.replaceChars(targetStrs, replacedStrs)
+    replacedStrs, del_logs2  = myFilter.replaceRegexpStrs(targetStrs, replacedStrs)
     myFilter.df['상품명'] = pd.Series(replacedStrs)
-    print('특수문자 -> 스페이스', myFilter.df['상품명'])
-    print()
+    print('특수문자 -> 스페이스')
+    print(myFilter.df['상품명'].head(10))
     print()
 
     # 정규표현식 삭제
     # re.sub를 사용할 떈 //g를 사용하면 안된다.
-    regStrs = [
+    targetStrs = [
         r'[0-9a-zA-Z]+-[0-9a-zA-Z]+',  # DP-1234,
         r'[a-zA-Z]{1,2}[0-9]+',  # DB12 //잘못하면 USB2 이런것도 걸린다.
         r'^[0-9]+\.',  # 09. 발가락 보호대. 12. 허리보호대
         r'[0-9]{4,9}',  # 숫자4개 이상연속
     ]
 
-    regFiltered, delLogs3 = myFilter.removeReg(regStrs)
+    regFiltered, del_logs3 = myFilter.removeReg(targetStrs)
     myFilter.df['상품명'] = pd.Series(regFiltered)
-    print(myFilter.df['상품명'].head(10))
     print('regex 필터')
+    print(myFilter.df['상품명'].head(10))
     print()
     print()
 
@@ -269,13 +224,36 @@ if __name__ == '__main__':
     # TODO : 키워드 랜덤섞기 해야할지도?
 
 
-
     # 최종출력
+    #TODO csv가 아니라 엑셀로 만들기
     cnt = 1
-    fileName = 'resCsv' + str(cnt) + '.csv'
+    dir_name='resources'
+    dir_name1='resXls'
+    fileName = dir_name+ '/' + dir_name1+'/'+'resCsv' + str(cnt) + '.csv'
+
     while os.path.isfile(fileName):  # 여러번 실행시킬 수 있도록.
         cnt += 1
-        fileName = 'resCsv' + str(cnt) + '.csv'
+        fileName = dir_name +'/' + dir_name1 +'/'+'resCsv' + str(cnt) + '.csv'
     resDf.to_csv(fileName, encoding='cp949')  # 엑셀로 열려면 cp949 해야한다!
     print(f'fileName : {fileName}')
     print(f'len : {len(productNames)}')
+
+    #del_log 파일 만들기
+    #TODO : 폴더 경로 정리.
+    del_log1_df = make_log_df(del_logs1)
+    del_log1_df.to_csv('del_log1.csv', encoding='cp949')
+
+    del_log2_df = make_log_df(del_logs2)
+    del_log2_df.to_csv('del_log2.csv', encoding='cp949')
+
+    del_log3_df = make_log_df(del_logs3)
+    del_log3_df.to_csv('del_log3.csv', encoding='cp949')
+
+
+
+
+
+
+
+
+
