@@ -254,13 +254,16 @@ if __name__ == '__main__':
     print()
 
     # 들어있다면 row 자체를 삭제
-    booleanFilter = myFilter.df['상품명'].str.contains('랜덤')  # '랜덤|싸다|최저가' 이렇게 |로 나열해주면된다.
+    booleanFilter = myFilter.df['상품명'].str.contains('랜덤')  # 정규표현식에서 '랜덤|싸다|최저가' 이렇게 |로 나열해주면된다.
     print('booleanFilter count : ', myFilter.df[booleanFilter == True].count())
     myFilter.df = myFilter.df[~booleanFilter]
 
-    # print('after del contain row : ', myFilter.df.count())
 
-    # 좌우 공백 삭제, strip
+    print('삭제 후 상품명: ', myFilter.df['상품명'].count())
+    print('삭제 후 도매매 상품번호 : ', myFilter.df['도매매 상품번호'].count()) #삭제했기 때문에 인덱스가 이상하다. 연속적이지 않음.
+    # print(myFilter.df)
+
+    # 좌우 공백 삭제, strip. 인덱스가 1부터 시작인 상황.
     stripList = myFilter.df['상품명'].tolist()
     for i in range(len(stripList)):
         stripList[i] = stripList[i].strip()
@@ -269,14 +272,17 @@ if __name__ == '__main__':
 
     # 띄어쓰기 두번 삭제
     duplicatedSpaceRemoved = myFilter.removeDuplicatedSpace(productNames)
-    productNames = pd.Series(duplicatedSpaceRemoved)
-    print('duplicatedSpaceRemoved : \n', productNames.head(10))
+
+    # productNames = pd.Series(duplicatedSpaceRemoved)
+    myFilter.df['상품명'] = duplicatedSpaceRemoved
+
+    print('duplicatedSpaceRemoved : \n', myFilter.df['상품명'].head(10))
     print()
     print()
 
-    resDf = myFilter.df.copy()
-    resDf['상품명'] = productNames
-    myFilter.df = resDf  # 억지로 넣음..
+    # resDf = myFilter.df.copy()
+    # resDf['상품명'] = productNames
+    # myFilter.df = resDf  # 억지로 넣음..
 
     # TODO : 키워드 랜덤섞기 해야할지도?
 
@@ -286,20 +292,20 @@ if __name__ == '__main__':
     cnt = 1
     dir_name='resources'
     dir_name1='resXls'
-    fileName = dir_name+ '/' + dir_name1+'/'+'resCsv' + str(cnt) + '.csv'
+    file_name='resXlsx'
+    file_path = dir_name + '/' + dir_name1 + '/' + file_name + str(cnt) + '.csv'
 
-    while os.path.isfile(fileName):  # 여러번 실행시킬 수 있도록.
+    while os.path.isfile(file_path):  # 여러번 실행시킬 수 있도록.
         cnt += 1
-        fileName = dir_name +'/' + dir_name1 +'/'+'resCsv' + str(cnt) + '.csv'
-    resDf.to_csv(fileName, encoding='cp949')  # 엑셀로 열려면 cp949 해야한다!
-    print(f'fileName : {fileName}')
+        file_path = dir_name + '/' + dir_name1 + '/' + file_name + str(cnt) + '.csv'
+    myFilter.df.to_csv(file_path, encoding='cp949')  # 엑셀로 열려면 cp949 해야한다!
+    print(f'fileName : {file_path}')
     print(f'len : {len(productNames)}')
 
     #del_log 파일 만들기
     #TODO : 폴더 경로 정리.
 
     del_log_dir='resources/del_logs.xlsx'
-
     with pd.ExcelWriter(del_log_dir) as writer:
         del_log1_df = make_log_df(del_logs1)# 키워드
 
@@ -311,12 +317,6 @@ if __name__ == '__main__':
         del_log2_df.to_excel(writer, sheet_name='특수문자 삭제')
         del_log3_df.to_excel(writer, sheet_name='정규표현식 삭제')
 
-
-    # del_log1_df.to_csv('del_log1.csv', encoding='cp949')
-    #
-    # del_log2_df.to_csv('del_log2.csv', encoding='cp949')
-    #
-    # del_log3_df.to_csv('del_log3.csv', encoding='cp949')
 
 
 
