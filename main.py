@@ -73,6 +73,7 @@ class MyFileter():
 
     def replaceRegexpStrs(self, targetStrs, repalceStrs):
         """
+        코어함수
         키워드를 제거하거나 변경할 때 사용한다.
         :param targetStrs: 바꾸고자 하는 문자열
         :param repalceStrs: 이 문자열로 바꾸자
@@ -86,14 +87,14 @@ class MyFileter():
             filteredName = ''
             for j, val_j in enumerate(targetStrs):
                 regex = re.compile(f'{val_j}')
-                indicies = [i for i in re.finditer(regex, tmp_val_i)]  # 문자를 찾은 인덱스 정보
+                indicies = [_ for _ in re.finditer(regex, tmp_val_i)]  # 문자를 찾은 인덱스 정보
                 LEN = len(indicies)
                 for k in range(LEN):  # 특수문자가 있는 인덱스의 자리
 
                     #잘라내서 붙일 인덱스
                     startIdx = 0 if k == 0 else indicies[k - 1].span()[1] + 1
                     endIdx = indicies[k].span()[0]
-                    filteredName += val_i[startIdx:endIdx] + repalceStrs[j] +'' # 단순삭제가 아니라 replace해야한다.
+                    filteredName += val_i[startIdx:endIdx] + repalceStrs[j] # 단순삭제가 아니라 replace해야한다.
                     tmp_val_i = filteredName
 
                     #잘라내서 없앨 인덱스
@@ -110,7 +111,8 @@ class MyFileter():
 
     def removeChars(self, chars):
         """
-        chars에 있는 문자를 지운다. 단순 remove임. 보통 특수문자 제거에 사용한다.
+        특수문자 제거에 사용한다.
+        chars에 있는 문자를 지운다. 단순 remove임.
         :param chars: [/, \, =,,,]
         :return: [newName1, newName2,,,]
         """
@@ -147,7 +149,10 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)  # 전체 열 보기
     pd.set_option('display.max_rows', None)  # 전체 행 보기
 
-    df = pd.read_csv('C:/Users/minkun/Downloads/마이박스.csv', encoding='cp949')
+    df = pd.read_excel('C:/Users/minkun/Downloads/마이박스.xls')
+    df.drop(inplace=True, index=0, axis=0) # 행삭제. 행을 삭제해도 인덱스는 그대로 남아있다. 재정렬 안된다.
+    # df = df.iloc[1:, :]
+
     parentheses = [['(', ')'], ['[', ']'], ['{', '}']]  # 괄호 안을 전부 지우기 위해 이런게 필요했다.
 
     myFilter = MyFileter(df, parentheses)
@@ -155,36 +160,43 @@ if __name__ == '__main__':
     # 원본출력
     print('origin : ', df['상품명'].count())
     print(df['상품명'].head(10))
+    print(df['상품명'].count())
     print()
     print()
 
-    # 문자 지우기
+    # 키워드 지우기
     removingStrs = ['후니케이스', '다번다', '뷰티컬'
         , '아이윙스', '피포페인팅', '하이셀', '에이브', '이거찜', 'PVC', '리빙114', '슬림스', '모던스', 'SNW', 'ABM도매콜', '애니포트', '헤어슈슈', '베이비캠프',
-                    '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '템플러', '애니포트', '정확도'
+                    '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '애니포트', '정확도'
                     ]
     before_len=len(removingStrs)
     removingStrs_set=set(removingStrs)
     after_len=len(removingStrs_set)
     removingStrs = list(removingStrs_set)
     print('중복되는 키워드 개수 : ', before_len-after_len)
-
-
+    print('상품명 카운트', df['상품명'].count())
     charFiltered, del_logs1 = myFilter.removeChars(removingStrs)
-    myFilter.df['상품명'] = pd.Series(charFiltered)
+    charFiltered.insert(0, 0) # 앞에 더미값 하나 추가해줘야 올바르게 동작함. 아니면 시리즈[0]에 해당하는 row가 잘린다...
+    tmpSeries= pd.Series(charFiltered)
+    print(tmpSeries)
+    myFilter.df['상품명'] = tmpSeries # 데이터 프레임에 추가될 때는 인덱스를 기준으로 추가된다. 앞에서 잘랐기 때문에 인덱스가 1부터 시작된다. 0부터 있어서 문제가 되었던 것이다.
     print('키워드 지우기')
     print(myFilter.df['상품명'].head(10))
     print(myFilter.df['상품명'].count())
     print()
     print()
 
+
+    #특수문자 제거
     # 스페이스로 대체. 스페이스가 2개 되더라도 나중에 뒤에서 스페이스 여러개 처리하기 때문에 상관 x
     targetStrs = ['\/', '\(', '\)', '\[', '\]', '\{', '\}']  # regexp가 아니라서 이스케이프 안해도 된다. regexp일 때는 이스케이프 해야함.
     replacedStrs = [' ', ' ', ' ', ' ', ' ', ' ', ' ']
     assert len(targetStrs) == len(replacedStrs), f'{len(targetStrs)}=={len(replacedStrs)}'
     replacedStrs, del_logs2  = myFilter.replaceRegexpStrs(targetStrs, replacedStrs)
+    replacedStrs.insert(0,0)
     myFilter.df['상품명'] = pd.Series(replacedStrs)
     print('특수문자 -> 스페이스')
+    print(df['상품명'].count())
     print(myFilter.df['상품명'].head(10))
     print()
 
@@ -198,6 +210,7 @@ if __name__ == '__main__':
     ]
 
     regFiltered, del_logs3 = myFilter.removeReg(targetStrs)
+    regFiltered.insert(0,0)
     myFilter.df['상품명'] = pd.Series(regFiltered)
     print('regex 필터')
     print(myFilter.df['상품명'].head(10))
@@ -206,8 +219,9 @@ if __name__ == '__main__':
 
     # 들어있다면 row 자체를 삭제
     booleanFilter = myFilter.df['상품명'].str.contains('랜덤')  # '랜덤|싸다|최저가' 이렇게 |로 나열해주면된다.
-    print('booleanFilter count : ', booleanFilter[booleanFilter == True].count())
+    print('booleanFilter count : ', myFilter.df[booleanFilter == True].count())
     myFilter.df = myFilter.df[~booleanFilter]
+
     # print('after del contain row : ', myFilter.df.count())
 
     # 좌우 공백 삭제, strip
@@ -247,14 +261,26 @@ if __name__ == '__main__':
 
     #del_log 파일 만들기
     #TODO : 폴더 경로 정리.
-    del_log1_df = make_log_df(del_logs1)
-    del_log1_df.to_csv('del_log1.csv', encoding='cp949')
 
-    del_log2_df = make_log_df(del_logs2)
-    del_log2_df.to_csv('del_log2.csv', encoding='cp949')
+    del_log_dir='resources/del_logs.xlsx'
 
-    del_log3_df = make_log_df(del_logs3)
-    del_log3_df.to_csv('del_log3.csv', encoding='cp949')
+    with pd.ExcelWriter(del_log_dir) as writer:
+        del_log1_df = make_log_df(del_logs1)# 키워드
+
+        del_log2_df = make_log_df(del_logs2)# 특수문자
+
+        del_log3_df = make_log_df(del_logs3)# 정규표현식
+
+        del_log1_df.to_excel(writer, sheet_name='키워드삭제')
+        del_log2_df.to_excel(writer, sheet_name='특수문자 삭제')
+        del_log3_df.to_excel(writer, sheet_name='정규표현식 삭제')
+
+
+    # del_log1_df.to_csv('del_log1.csv', encoding='cp949')
+    #
+    # del_log2_df.to_csv('del_log2.csv', encoding='cp949')
+    #
+    # del_log3_df.to_csv('del_log3.csv', encoding='cp949')
 
 
 
