@@ -70,48 +70,78 @@ class MyFileter():
     #         filteredNames.append(newStr)
     #     return filteredNames
 
+    #
+    # def replaceRegexpStrs(self, targetStrs, repalceStrs):
+    #     """
+    #     코어함수
+    #     키워드를 제거하거나 변경할 때 사용한다.
+    #     :param targetStrs: 바꾸고자 하는 문자열
+    #     :param repalceStrs: 이 문자열로 바꾸자
+    #     :return: filteredNames, del_logs
+    #     """
+    #     productNames = df['상품명'].tolist()
+    #     filteredNames = []
+    #     delLogs = []
+    #     for i, val_i in enumerate(productNames):  # [상품1, 상품2, 상품3]
+    #         tmp_val_i = val_i
+    #         filteredName = ''
+    #         for j, val_j in enumerate(targetStrs):
+    #             regex = re.compile(f'{val_j}')
+    #             indicies = [_ for _ in re.finditer(regex, tmp_val_i)]  # 문자를 찾은 인덱스 정보
+    #             LEN = len(indicies)
+    #             for k in range(LEN):  # 특수문자가 있는 인덱스의 자리
+    #
+    #                 #잘라내서 붙일 인덱스
+    #                 startIdx = 0 if k == 0 else indicies[k - 1].span()[1] + 1
+    #                 endIdx = indicies[k].span()[0]
+    #                 filteredName += val_i[startIdx:endIdx] + repalceStrs[j] # 단순삭제가 아니라 replace해야한다.
+    #                 tmp_val_i = filteredName
+    #
+    #                 #잘라내서 없앨 인덱스
+    #                 del_start_idx = indicies[k].span()[0]
+    #                 del_end_idx = indicies[k].span()[1]
+    #                 delLogContent = val_i[del_start_idx:del_end_idx]
+    #                 delLogs.append(DelLog(i, delLogContent, val_j))
+    #             # 마지막에 처리 한번 더 해야한다.
+    #             if LEN > 0:
+    #                 startIdx = indicies[LEN - 1].span()[1]
+    #                 filteredName += val_i[startIdx:]
+    #         filteredNames.append(filteredName if filteredName != '' else val_i)
+    #     return filteredNames, delLogs
+    #
 
-    def replaceRegexpStrs(self, targetStrs, repalceStrs):
+
+    def replaceRegexpStrs(self, targetStrs, replaceStrs):
         """
         코어함수
-        키워드를 제거하거나 변경할 때 사용한다.
+        특수문자제거
         :param targetStrs: 바꾸고자 하는 문자열
         :param repalceStrs: 이 문자열로 바꾸자
         :return: filteredNames, del_logs
         """
         productNames = df['상품명'].tolist()
         filteredNames = []
-        delLogs = []
+        del_logs = []
         for i, val_i in enumerate(productNames):  # [상품1, 상품2, 상품3]
-            tmp_val_i = val_i
-            filteredName = ''
-            for j, val_j in enumerate(targetStrs):
+            filteredName = val_i
+            for j, val_j in enumerate(targetStrs): # val_j = 정규표현식
                 regex = re.compile(f'{val_j}')
-                indicies = [_ for _ in re.finditer(regex, tmp_val_i)]  # 문자를 찾은 인덱스 정보
+                indicies = [_ for _ in re.finditer(regex, filteredName)]  # 문자를 찾은 인덱스 정보
                 LEN = len(indicies)
-                for k in range(LEN):  # 특수문자가 있는 인덱스의 자리
+                for k in range(LEN-1, -1, -1):  # 특수문자가 있는 인덱스의 자리. 뒤에서 부터 삭제. 영향 안받는다. 0까지 하고 싶으면 -1로 설정해야한다.
+                    startIdx=indicies[k].span()[0]
+                    endIdx=indicies[k].span()[1]
+                    del_content = filteredName[startIdx:endIdx]
+                    filteredName = filteredName[:startIdx] + replaceStrs[j] + filteredName[endIdx:]
+                    del_logs.append(DelLog(i, del_content, val_j))
 
-                    #잘라내서 붙일 인덱스
-                    startIdx = 0 if k == 0 else indicies[k - 1].span()[1] + 1
-                    endIdx = indicies[k].span()[0]
-                    filteredName += val_i[startIdx:endIdx] + repalceStrs[j] # 단순삭제가 아니라 replace해야한다.
-                    tmp_val_i = filteredName
-
-                    #잘라내서 없앨 인덱스
-                    del_start_idx = indicies[k].span()[0]
-                    del_end_idx = indicies[k].span()[1]
-                    delLogContent = val_i[del_start_idx:del_end_idx]
-                    delLogs.append(DelLog(i, delLogContent, val_j))
-                # 마지막에 처리 한번 더 해야한다.
-                if LEN > 0:
-                    startIdx = indicies[LEN - 1].span()[1]
-                    filteredName += val_i[startIdx:]
             filteredNames.append(filteredName if filteredName != '' else val_i)
-        return filteredNames, delLogs
+        return filteredNames, del_logs
+
 
     def removeChars(self, chars):
         """
-        특수문자 제거에 사용한다.
+        키워드 제거
         chars에 있는 문자를 지운다. 단순 remove임.
         :param chars: [/, \, =,,,]
         :return: [newName1, newName2,,,]
@@ -122,6 +152,11 @@ class MyFileter():
         return filteredNames, delLogs
 
     def removeDuplicatedSpace(self, productNames):
+        """
+        스페이스 2개 제거
+        :param productNames:
+        :return:
+        """
         # productNames = df['상품명'].tolist()
         trimedStr = []
         for i in productNames:
@@ -131,6 +166,7 @@ class MyFileter():
 
     def removeReg(self, regStrs):
         """
+        정규표현식으로 제거
         :param regStrs: [r's+' r'(0-9)+', ,,,,]
         :return: regStrs에 해당하는 부분을 찾아서 없앤다.
         """
@@ -188,7 +224,7 @@ if __name__ == '__main__':
 
 
     #특수문자 제거
-    # 스페이스로 대체. 스페이스가 2개 되더라도 나중에 뒤에서 스페이스 여러개 처리하기 때문에 상관 x
+    #특수문자는는 페이스로 대체. 스페이스가 2개 되더라도 나중에 뒤에서 스페이스 여러개 처리하기 때문에 상관 x
     targetStrs = ['\/', '\(', '\)', '\[', '\]', '\{', '\}']  # regexp가 아니라서 이스케이프 안해도 된다. regexp일 때는 이스케이프 해야함.
     replacedStrs = [' ', ' ', ' ', ' ', ' ', ' ', ' ']
     assert len(targetStrs) == len(replacedStrs), f'{len(targetStrs)}=={len(replacedStrs)}'
