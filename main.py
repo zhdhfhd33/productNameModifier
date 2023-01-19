@@ -161,8 +161,15 @@ if __name__ == '__main__':
     # 문자 지우기
     removingStrs = ['후니케이스', '다번다', '뷰티컬'
         , '아이윙스', '피포페인팅', '하이셀', '에이브', '이거찜', 'PVC', '리빙114', '슬림스', '모던스', 'SNW', 'ABM도매콜', '애니포트', '헤어슈슈', '베이비캠프',
-                    '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '템플러', '애니포트'
+                    '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '템플러', '애니포트', '정확도'
                     ]
+    before_len=len(removingStrs)
+    removingStrs_set=set(removingStrs)
+    after_len=len(removingStrs_set)
+    removingStrs = list(removingStrs_set)
+    print('중복되는 키워드 개수 : ', before_len-after_len)
+
+
     charFiltered, del_logs1 = myFilter.removeChars(removingStrs)
     myFilter.df['상품명'] = pd.Series(charFiltered)
     print('키워드 지우기')
