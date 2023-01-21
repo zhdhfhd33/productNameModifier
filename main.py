@@ -203,7 +203,7 @@ if __name__ == '__main__':
     # 키워드 지우기
     removingStrs = ['후니케이스', '다번다', '뷰티컬'
         , '아이윙스', '피포페인팅', '하이셀', '에이브', '이거찜', 'PVC', '리빙114', '슬림스', '모던스', 'SNW', 'ABM도매콜', '애니포트', '헤어슈슈', '베이비캠프',
-                    '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '애니포트', '정확도'
+                    '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '애니포트', '정확도','특가', '세일', '할인', '최저가'
                     ]
     before_len=len(removingStrs)
     removingStrs_set=set(removingStrs)
@@ -257,8 +257,6 @@ if __name__ == '__main__':
     booleanFilter = myFilter.df['상품명'].str.contains('랜덤')  # 정규표현식에서 '랜덤|싸다|최저가' 이렇게 |로 나열해주면된다.
     print('booleanFilter count : ', myFilter.df[booleanFilter == True].count())
     myFilter.df = myFilter.df[~booleanFilter]
-
-
     print('삭제 후 상품명: ', myFilter.df['상품명'].count())
     print('삭제 후 도매매 상품번호 : ', myFilter.df['도매매 상품번호'].count()) #삭제했기 때문에 인덱스가 이상하다. 연속적이지 않음.
     # print(myFilter.df)
