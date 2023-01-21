@@ -119,7 +119,7 @@ class MyFileter():
         :param repalceStrs: 이 문자열로 바꾸자
         :return: filteredNames, del_logs
         """
-        productNames = df['상품명'].tolist()
+        productNames = self.df['상품명'].tolist()
         filteredNames = []
         del_logs = []
         for i, val_i in enumerate(productNames):  # [상품1, 상품2, 상품3]
@@ -200,6 +200,18 @@ if __name__ == '__main__':
     print()
     print()
 
+
+
+    # 들어있다면 row 자체를 삭제. 젤 먼저 해야한다.
+    booleanFilter = myFilter.df['상품명'].str.contains('랜덤')  # 정규표현식에서 '랜덤|싸다|최저가' 이렇게 |로 나열해주면된다.
+    print('booleanFilter count : ', myFilter.df[booleanFilter == True].count())
+    myFilter.df = myFilter.df[~booleanFilter]
+    print('삭제 후 상품명: ', myFilter.df['상품명'].count())
+    print('삭제 후 도매매 상품번호 : ', myFilter.df['도매매 상품번호'].count()) #삭제했기 때문에 인덱스가 이상하다. 연속적이지 않음.
+    # print(myFilter.df)'
+
+
+
     # 키워드 지우기
     removingStrs = ['후니케이스', '다번다', '뷰티컬'
         , '아이윙스', '피포페인팅', '하이셀', '에이브', '이거찜', 'PVC', '리빙114', '슬림스', '모던스', 'SNW', 'ABM도매콜', '애니포트', '헤어슈슈', '베이비캠프',
@@ -211,9 +223,9 @@ if __name__ == '__main__':
     removingStrs = list(removingStrs_set)
     print('중복되는 키워드 개수 : ', before_len-after_len)
     print('상품명 카운트', df['상품명'].count())
-    charFiltered, del_logs1 = myFilter.removeChars(removingStrs)
-    charFiltered.insert(0, 0) # 앞에 더미값 하나 추가해줘야 올바르게 동작함. 아니면 시리즈[0]에 해당하는 row가 잘린다...
-    tmpSeries= pd.Series(charFiltered)
+    charFiltered, del_logs1 = myFilter.removeChars(removingStrs) # 새로운 배열을 return한다.
+    # charFiltered.insert(0, 0) # 앞에 더미값 하나 추가해줘야 올바르게 동작함. 아니면 시리즈[0]에 해당하는 row가 잘린다...
+    tmpSeries= (charFiltered)
     print(tmpSeries)
     myFilter.df['상품명'] = tmpSeries # 데이터 프레임에 추가될 때는 인덱스를 기준으로 추가된다. 앞에서 잘랐기 때문에 인덱스가 1부터 시작된다. 0부터 있어서 문제가 되었던 것이다.
     print('키워드 지우기')
@@ -229,8 +241,8 @@ if __name__ == '__main__':
     replacedStrs = [' ', ' ', ' ', ' ', ' ', ' ', ' ']
     assert len(targetStrs) == len(replacedStrs), f'{len(targetStrs)}=={len(replacedStrs)}'
     replacedStrs, del_logs2  = myFilter.replaceRegexpStrs(targetStrs, replacedStrs)
-    replacedStrs.insert(0,0)
-    myFilter.df['상품명'] = pd.Series(replacedStrs)
+    # replacedStrs.insert(0,0)
+    myFilter.df['상품명'] = (replacedStrs)
     print('특수문자 -> 스페이스')
     print(df['상품명'].count())
     print(myFilter.df['상품명'].head(10))
@@ -246,20 +258,13 @@ if __name__ == '__main__':
     ]
 
     regFiltered, del_logs3 = myFilter.removeReg(targetStrs)
-    regFiltered.insert(0,0)
-    myFilter.df['상품명'] = pd.Series(regFiltered)
+    # regFiltered.insert(0,0)
+    myFilter.df['상품명'] = (regFiltered)
     print('regex 필터')
     print(myFilter.df['상품명'].head(10))
     print()
     print()
 
-    # 들어있다면 row 자체를 삭제
-    booleanFilter = myFilter.df['상품명'].str.contains('랜덤')  # 정규표현식에서 '랜덤|싸다|최저가' 이렇게 |로 나열해주면된다.
-    print('booleanFilter count : ', myFilter.df[booleanFilter == True].count())
-    myFilter.df = myFilter.df[~booleanFilter]
-    print('삭제 후 상품명: ', myFilter.df['상품명'].count())
-    print('삭제 후 도매매 상품번호 : ', myFilter.df['도매매 상품번호'].count()) #삭제했기 때문에 인덱스가 이상하다. 연속적이지 않음.
-    # print(myFilter.df)
 
     # 좌우 공백 삭제, strip. 인덱스가 1부터 시작인 상황.
     stripList = myFilter.df['상품명'].tolist()
@@ -272,7 +277,7 @@ if __name__ == '__main__':
     duplicatedSpaceRemoved = myFilter.removeDuplicatedSpace(productNames)
 
     # productNames = pd.Series(duplicatedSpaceRemoved)
-    myFilter.df['상품명'] = duplicatedSpaceRemoved
+    # myFilter.df['상품명'] = duplicatedSpaceRemoved
 
     print('duplicatedSpaceRemoved : \n', myFilter.df['상품명'].head(10))
     print()
