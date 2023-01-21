@@ -180,10 +180,16 @@ def make_log_df(del_logs):
                                 '엑셀 idx': [i.getXlsIdx() for i in del_logs]})
     return del_log1_df
 
-if __name__ == '__main__':
-    # df 출력설정.
+def pdConfig():
+
     pd.set_option('display.max_columns', None)  # 전체 열 보기
     pd.set_option('display.max_rows', None)  # 전체 행 보기
+    pd.set_option('mode.chained_assignment', None)  # SettingWithCopyWarning경고를 끈다
+
+if __name__ == '__main__':
+    # pd config
+    pdConfig()
+
 
     df = pd.read_excel('C:/Users/minkun/Downloads/마이박스.xls')
     df.drop(inplace=True, index=0, axis=0) # 행삭제. 행을 삭제해도 인덱스는 그대로 남아있다. 재정렬 안된다.
