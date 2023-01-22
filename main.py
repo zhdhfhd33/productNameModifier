@@ -279,21 +279,20 @@ if __name__ == '__main__':
     print()
 
     # 브랜드 명 뒤에는 '호환' 붙이기. for 쿠팡.
-    brand_regex = ['갤럭시 (?!워치)', '갤럭시워치', '갤럭시 워치' # (?!x) 뒤에 x가 나오는 것은 제외.
-        ,'애플 (?!워치)', '애플워치', '애플 워치'
+    brand_regex = ['갤럭시 (?!워치)', '갤럭시워치', '갤럭시 워치'  # (?!x) 뒤에 x가 나오는 것은 제외.
+        , '애플 (?!워치)', '애플워치', '애플 워치'
         , '아이폰 (?!워치)', '아이폰워치', '아이폰 워치'
-                   , '호환 호환', '호환  호환'] # '갤럭시워치'를 '갤럭시 워치'로 바꾸기 때문에 '갤럭시워치' -> '갤럭시 워치 호환 ' -> '갤럭시 워치 호환 호환'으로 바뀐다. 그래서 '호환 호환'을 처리해 줌
+        , '호환 호환',
+                   '호환  호환']  # '갤럭시워치'를 '갤럭시 워치'로 바꾸기 때문에 '갤럭시워치' -> '갤럭시 워치 호환 ' -> '갤럭시 워치 호환 호환'으로 바뀐다. 그래서 '호환 호환'을 처리해 줌
 
-# 나중에 스페이스 2개는 처리되기 때문에 뒤에 스페이스 붙이는게 로버스트함.
-    replace_strs=['갤럭시 호환 ', '갤럭시 워치 호환 ', '갤럭시 워치 호환 '
-                  , '애플 호환 ', '애플 워치 호환 ', '애플 워치 호환 '
-                  , '아이폰 호환 ', '아이폰 워치 호환 ', '아이폰 워치 호환 '
-                  , '호환 ', '호환 ']
+    # 나중에 스페이스 2개는 처리되기 때문에 뒤에 스페이스 붙이는게 로버스트함.
+    replace_strs = ['갤럭시 호환 ', '갤럭시 워치 호환 ', '갤럭시 워치 호환 '
+        , '애플 호환 ', '애플 워치 호환 ', '애플 워치 호환 '
+        , '아이폰 호환 ', '아이폰 워치 호환 ', '아이폰 워치 호환 '
+        , '호환 ', '호환 ']
 
     brand_filterd, del_logs4 = myFilter.brandFilter(brand_regex, replace_strs)
     myFilter.df['상품명'] = brand_filterd
-
-
 
     # 좌우 공백 삭제, strip. 인덱스가 1부터 시작인 상황.
     stripList = myFilter.df['상품명'].tolist()
@@ -301,8 +300,6 @@ if __name__ == '__main__':
         stripList[i] = stripList[i].strip()
     # myFilter.df['상품명'] = pd.Series(stripList) # 수정한 것을 다시 대입할 수 없다.
     myFilter.df['상품명'] = stripList
-
-
 
     # 띄어쓰기 두번 삭제
     productNames = myFilter.df['상품명'].tolist()
@@ -325,7 +322,7 @@ if __name__ == '__main__':
     dir_name = 'resources'
     dir_name1 = 'resXls'
     file_name = 'resXlsx'
-    extension='.xlsx'
+    extension = '.xlsx'
     file_path = dir_name + '/' + dir_name1 + '/' + file_name + str(cnt) + extension
 
     while os.path.isfile(file_path):  # 여러번 실행시킬 수 있도록.
@@ -348,7 +345,11 @@ if __name__ == '__main__':
         del_log2_df = make_log_df(del_logs2)  # 특수문자
 
         del_log3_df = make_log_df(del_logs3)  # 정규표현식
+        del_log4_df = make_log_df(del_logs4)  # 브랜드 '호환'
 
         del_log1_df.to_excel(writer, sheet_name='키워드삭제')
         del_log2_df.to_excel(writer, sheet_name='특수문자 삭제')
         del_log3_df.to_excel(writer, sheet_name='정규표현식 삭제')
+        del_log4_df.to_excel(writer, sheet_name='브랜드 \'호환\'')
+
+
