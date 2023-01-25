@@ -17,99 +17,14 @@ class DelLog():
         return self.idx + 2
 
 
-class MyFileter():
+class ProductNameModifier():
     def __init__(self, df, parenthèses):
         """
         :param df:
         :param parenthèses: [[(,)], [{,}]]
         """
         self.df = df
-        self.parenthèses = parenthèses
-
-    #
-    # def getParenthesis(self, productName):
-    #     """
-    #     :param productName: (도매매)기모 장갑~~
-    #     :return: dict {'(' : [], ')':[]}
-    #     """
-    #     indicies = {}
-    #     for i in self.parenthèses:
-    #         regex = re.compile(f"\\{i[0]}")
-    #         indicies[i[0]] = [i for i in re.finditer(regex, productName)]
-    #         regex2 = re.compile(f'\\{i[1]}')
-    #         indicies[i[1]] = [i for i in re.finditer(regex2, productName)]
-    #
-    #     return indicies
-
-    # def removeParenthesisStr(self):
-    #     productNames = df['상품명'].tolist()
-    #     for i in range(len(productNames)):
-    #         indicies = self.getParenthesis(productNames[i], self.parenthèses)
-    #
-    #         for j in range(len(indicies)):
-    #             filteredStr = productNames[i][:indicies['(']].start() + productNames[i][indicies[')'].start()]
-    #     return filteredStr
-    #
-    # def removeStartEndParenthesisStr(self):
-    #     """
-    #     괄호의 시작부터 끝을 삭제
-    #     :return:
-    #     """
-    #     productNames = df['상품명'].tolist()
-    #     filteredNames = []
-    #     for i in range(len(productNames)):  # i=상품명인덱스
-    #         indicies = self.getParenthesis(productNames[i])
-    #         newStr = productNames[i]
-    #
-    #         for j in parentheses:
-    #             if len(indicies[j[0]]) == 0 or len(indicies[j[1]]) == 0:  # j[0] = (, [,, {, j[1] = ), ],, }
-    #                 continue
-    #
-    #             newStr = newStr[:indicies[j[0]][0].start()] + newStr[indicies[j[1]][
-    #                                                                      0].start() + 1:]  # 이렇게 숫자로 하는 것 보다 클래스 만드는게 유리하다.
-    #
-    #         filteredNames.append(newStr)
-    #     return filteredNames
-
-    #
-    # def replaceRegexpStrs(self, targetStrs, repalceStrs):
-    #     """
-    #     코어함수
-    #     키워드를 제거하거나 변경할 때 사용한다.
-    #     :param targetStrs: 바꾸고자 하는 문자열
-    #     :param repalceStrs: 이 문자열로 바꾸자
-    #     :return: filteredNames, del_logs
-    #     """
-    #     productNames = df['상품명'].tolist()
-    #     filteredNames = []
-    #     delLogs = []
-    #     for i, val_i in enumerate(productNames):  # [상품1, 상품2, 상품3]
-    #         tmp_val_i = val_i
-    #         filteredName = ''
-    #         for j, val_j in enumerate(targetStrs):
-    #             regex = re.compile(f'{val_j}')
-    #             indicies = [_ for _ in re.finditer(regex, tmp_val_i)]  # 문자를 찾은 인덱스 정보
-    #             LEN = len(indicies)
-    #             for k in range(LEN):  # 특수문자가 있는 인덱스의 자리
-    #
-    #                 #잘라내서 붙일 인덱스
-    #                 startIdx = 0 if k == 0 else indicies[k - 1].span()[1] + 1
-    #                 endIdx = indicies[k].span()[0]
-    #                 filteredName += val_i[startIdx:endIdx] + repalceStrs[j] # 단순삭제가 아니라 replace해야한다.
-    #                 tmp_val_i = filteredName
-    #
-    #                 #잘라내서 없앨 인덱스
-    #                 del_start_idx = indicies[k].span()[0]
-    #                 del_end_idx = indicies[k].span()[1]
-    #                 delLogContent = val_i[del_start_idx:del_end_idx]
-    #                 delLogs.append(DelLog(i, delLogContent, val_j))
-    #             # 마지막에 처리 한번 더 해야한다.
-    #             if LEN > 0:
-    #                 startIdx = indicies[LEN - 1].span()[1]
-    #                 filteredName += val_i[startIdx:]
-    #         filteredNames.append(filteredName if filteredName != '' else val_i)
-    #     return filteredNames, delLogs
-    #
+        # self.parenthèses = parenthèses
 
     def replaceRegexpStrs(self, targetStrs, replaceStrs):
         """
@@ -199,14 +114,14 @@ def pdConfig():
 if __name__ == '__main__':
     # pd config
     pdConfig()
-
-    df = pd.read_excel('C:/Users/minkun/Downloads/마이박스.xls')
+    path='C:/Users/minkun/Downloads/마이박스.xls'
+    df = pd.read_excel(path)
     df.drop(inplace=True, index=0, axis=0)  # 행삭제. 행을 삭제해도 인덱스는 그대로 남아있다. 재정렬 안된다.
     # df = df.iloc[1:, :]
 
     parentheses = [['(', ')'], ['[', ']'], ['{', '}']]  # 괄호 안을 전부 지우기 위해 이런게 필요했다.
 
-    myFilter = MyFileter(df, parentheses)
+    myFilter = ProductNameModifier(df, parentheses)
 
     # 원본출력
     print('origin : ', df['상품명'].count())
@@ -227,7 +142,7 @@ if __name__ == '__main__':
     removingStrs = ['후니케이스', '다번다', '뷰티컬'
         , '아이윙스', '피포페인팅', '하이셀', '에이브', '이거찜', 'PVC', '리빙114', '슬림스', '모던스', 'SNW', 'ABM도매콜', '애니포트', '헤어슈슈', '베이비캠프',
                     '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '애니포트', '정확도', '특가',
-                    '세일', '할인', '최저가', '액티몬'
+                    '세일', '할인', '최저가', '액티몬', '특가', '세일', '할인', '최저가',
                     ]
     before_len = len(removingStrs)
     removingStrs_set = set(removingStrs)
@@ -351,5 +266,3 @@ if __name__ == '__main__':
         del_log2_df.to_excel(writer, sheet_name='특수문자 삭제')
         del_log3_df.to_excel(writer, sheet_name='정규표현식 삭제')
         del_log4_df.to_excel(writer, sheet_name='브랜드 \'호환\'')
-
-
