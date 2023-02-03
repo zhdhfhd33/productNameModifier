@@ -1,7 +1,7 @@
 
 # 전역 함수
 import pandas as pd
-
+import re
 # def make_log_df(del_logs):
 #     del_log1_df = pd.DataFrame({'정규표현식': [i.regexp for i in del_logs], '삭제된 문자열': [i.content for i in del_logs],
 #                                 '엑셀 idx': [i.getXlsIdx() for i in del_logs]})
@@ -46,6 +46,8 @@ def get_file_name(path, sep):
     extension = full_name[extension_idx+1:]
     file_name = full_name[:extension_idx]
     return file_name, extension
+
+
 
 
 

@@ -12,7 +12,7 @@ from ProductNameModifier import ProductNameModifier
 if __name__ == '__main__':
     # pd config
     libs.pdConfig()
-    path = "C:/Users/minkun/Downloads/최저가확인관 인기순.xls"
+    path = "resources/aa/쿠팡가품.xlsx"
     keyword_path = 'resources/상품명가공 키워드지우기 리스트.xlsx'
 
     # 읽기
@@ -62,10 +62,6 @@ if __name__ == '__main__':
 
     print(f'fileName : {file_path}')
     # print(f'len : {len(productNames)}')
-
-    # del_log 파일 만들기
-    # TODO : 폴더 경로 정리.
-
 
     del_log_dir = dir_name +'/' +'del_log_' +file_name+'.'+extension
 

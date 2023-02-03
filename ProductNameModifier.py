@@ -21,7 +21,7 @@ class ProductNameModifier():
         self.keyword_df = keyword_df
         # self.del_logs=[] process, process_coupang 둘 다 호출할 수 있으니까 멤버로 두면 안된다.
 
-    def replaceRegexpStrs(self, targetStrs, replaceStrs):
+    def __replaceRegexpStrs(self, targetStrs, replaceStrs):
         """
         코어함수 private
         :param targetStrs: 바꾸고자 하는 문자열
@@ -47,6 +47,7 @@ class ProductNameModifier():
             filteredNames.append(filteredName if filteredName != '' else val_i)
         return filteredNames, del_logs
 
+
     def remove_keywords(self, keywords, replaces):
         """
         키워드 제거
@@ -63,7 +64,7 @@ class ProductNameModifier():
         keywords = keywords[::-1]
 
         # replacekeywords = [''] * len(keywords)
-        filteredNames, delLogs = self.replaceRegexpStrs(keywords, replaces)
+        filteredNames, delLogs = self.__replaceRegexpStrs(keywords, replaces)
 
         # 대입
         self.df[self.product_col_name] = filteredNames
@@ -79,7 +80,7 @@ class ProductNameModifier():
         for i in replace_pairs:
             target_strs.append(i.target)
             replace_strs.append(i.replace)
-        filtered_names, del_logs = self.replaceRegexpStrs(target_strs, replace_strs)
+        filtered_names, del_logs = self.__replaceRegexpStrs(target_strs, replace_strs)
 
         # 대입
         self.df[self.product_col_name] = filtered_names
@@ -106,7 +107,7 @@ class ProductNameModifier():
         """
         tmp = [''] * len(regStrs)
 
-        filteredNames, del_logs, = self.replaceRegexpStrs(regStrs, tmp)
+        filteredNames, del_logs, = self.__replaceRegexpStrs(regStrs, tmp)
 
         # 대입
         self.df[self.product_col_name] = filteredNames
@@ -120,14 +121,32 @@ class ProductNameModifier():
         """
         target_strs = []
         replace_strs = []
-        for i in replace_pairs:
-            target_strs.append(i.target)
-            replace_strs.append(i.replace)
+        for i_val in replace_pairs:
+            target_strs.append(i_val.target)
+            replace_strs.append(i_val.replace)
+        filtered_names, del_logs = self.__replaceRegexpStrs(target_strs, replace_strs)
 
-        filtered_names, del_logs = self.replaceRegexpStrs(target_strs, replace_strs)
-        # 대입
-        self.df[self.product_col_name] = filtered_names
-        return filtered_names, del_logs
+
+        # 호환 여러번 들어가면 젤 뒤의 호환만 남긴다.
+        # 마지막에 '호환' 하나는 놔두고 지워야하기 때문에 새로 구현할 수 밖에 없었다.
+        # 'z플립4 호환' 이렇게 하고 싶었는데 z플립 호환 4 이렇게 될 것이다.
+        filtered_names2=[]
+        del_logs2=[]
+        regex = re.compile(r'호환')
+        for i, i_val in enumerate(filtered_names):
+            indicies = [_ for _ in re.finditer(regex, i_val)]
+            list_i = list(i_val) # str to list
+            if len(indicies) > 1: # 호환이 여러 개 일때
+                for j in range(len(indicies)-2, -1, -1): # 거꾸로 해야 del 가능. 마지막 하나는 남겨둬야하기 때문에 -2.
+                    start_idx = indicies[j].span()[0]
+                    end_idx = indicies[j].span()[1]
+                    del_logs2.append(DelLog(i, list_i[start_idx:end_idx], '제거'))
+                    del list_i[start_idx:end_idx]
+            filtered_names2.append(''.join(list_i))
+        self.df[self.product_col_name] = filtered_names2 # 대입
+        sum_del_logs = del_logs+del_logs2 # del_log 합치기
+        return filtered_names, sum_del_logs
+
 
     def contain_row_drop(self, keywords):
         """
@@ -319,21 +338,28 @@ class ProductNameModifier():
 
         # 브랜드 명 뒤에는 '호환' 붙이기. for 쿠팡.
         brand_replace_pairs = []
-        brand_replace_pairs.append(ReplacePair('갤럭시 (?!워치)', '갤럭시 호환 '))  # 클래스로 나타내는게 더 보기 좋다.
-        brand_replace_pairs.append(ReplacePair('갤럭시워치', '갤럭시 워치 호환 '))
-        brand_replace_pairs.append(ReplacePair('갤럭시 워치', '갤럭시 워치 호환 '))
+        # brand_replace_pairs.append(ReplacePair(r'갤럭시 (?!워치)', '갤럭시 호환 '))  # 클래스로 나타내는게 더 보기 좋다.
+        brand_replace_pairs.append(ReplacePair(r'갤럭시', '갤럭시 호환 '))
+        brand_replace_pairs.append(ReplacePair(r'갤럭시워치', '갤럭시 워치 호환 '))
+        brand_replace_pairs.append(ReplacePair(r'갤럭시 워치', '갤럭시 워치 호환 '))
 
-        brand_replace_pairs.append(ReplacePair('애플 (?!워치)', '애플 호환 '))
-        brand_replace_pairs.append(ReplacePair('애플워치', '애플 워치 호환 '))
-        brand_replace_pairs.append(ReplacePair('애플 워치', '애플 워치 호환 '))
+        brand_replace_pairs.append(ReplacePair(r'애플 (?!워치)', '애플 호환 '))
+        brand_replace_pairs.append(ReplacePair(r'애플워치', '애플 워치 호환 '))
+        brand_replace_pairs.append(ReplacePair(r'애플 워치', '애플 워치 호환 '))
 
-        brand_replace_pairs.append(ReplacePair('아이폰 (?!워치)', '아이폰 호환 '))
-        # brand_replace_pairs.append(ReplacePair('아이폰(?!워치)[0-9]+', '아이폰 호환 ' )) #아이폰13 케이스 TODO
-        brand_replace_pairs.append(ReplacePair('아이폰워치', '아이폰 워치 호환 '))
-        brand_replace_pairs.append(ReplacePair('아이폰 워치', '아이폰 워치 호환 '))
+        # brand_replace_pairs.append(ReplacePair(r'아이폰 (?!워치)', '아이폰 호환 '))
+        brand_replace_pairs.append(ReplacePair(r'아이폰', '아이폰 호환 ')) #TODO : 아이폰13 케이스 아이폰 13 호환으로 하고 싶었는데 일단 아이폰 호환 13으로 했다..
+        brand_replace_pairs.append(ReplacePair(r'아이폰워치', '아이폰 워치 호환 '))
+        brand_replace_pairs.append(ReplacePair(r'아이폰 워치', '아이폰 워치 호환 '))
 
-        brand_replace_pairs.append(ReplacePair('호환 호환', '호환 '))
-        brand_replace_pairs.append(ReplacePair('호환  호환', '호환 '))
+
+        brand_replace_pairs.append(ReplacePair(r'[zZ]플립', 'z플립 호환 '))
+        brand_replace_pairs.append(ReplacePair(r'[zZ]폴드', 'z폴드 호환 '))
+
+
+
+        # brand_replace_pairs.append(ReplacePair('호환 호환', '호환 '))
+        # brand_replace_pairs.append(ReplacePair('호환  호환', '호환 '))
 
         brand_filterd, coupang_brand_filter_log = self.brandFilter(brand_replace_pairs)
         del_logs.coupang_brand_filter_log =(coupang_brand_filter_log)
