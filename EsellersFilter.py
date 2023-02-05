@@ -5,12 +5,35 @@ import re
 import libs
 
 
+class EsellersCombinationalOption():
+    def __init__(self, names, add_price, cnt, expose, url='', manage_code='', volume = 0):
+        """
+        :param names:
+        :param add_price:
+        :param cnt:
+        :param expose:
+        :param url:
+        :param manage_code:
+        :param volume: 롯데온에서만 사용용
+       """
+        self.names = names
+        # **
+        self.add_price = add_price
+        self.cnt = cnt
+        self.is_expose = expose
+        # 아래 3개는 없을 수도
+        self.url = url
+        self.manage_code = manage_code
+        self.volume = volume
+
+
 
 class EsellersFilter:
-    def __init__(self, df_basic, df_extend, product_col_name):
+    def __init__(self, df_basic, df_extend, product_col_name, option_col_name):
         self.df_basic = df_basic
         self.df_extend = df_extend
         self.product_col_name = product_col_name
+        self.option_col_name = option_col_name
 
     # 기본정보, 확장정보는 같이 지워야한다. 같이 안해도 된다. 이셀러스에서 알아서 inner join함.
     def drop_row(self, idx):
@@ -21,6 +44,29 @@ class EsellersFilter:
         """
         self.df_basic.drop(inplace=True, index=idx, axis=0)
         self.df_extend.drop(inplace=True, index=idx, axis=0)
+
+    def __parse_option(self, option_str):
+        """
+        조합형일 경우에만 사용.
+        아직까지 독립형 한번도 못보긴 했다.
+        :option_str : 상품선택*베이지**0*999*Y*https://cdn.ownerclan.com/rD0fHE4mN0V4nGhkVM1cyXkw7Qvn3BYb84g5FilqFVs/marketize/auto/as/v1.jpg
+        :return :
+        """
+        arr = option_str.split('**')
+        option_names = arr[0].split('*')
+        others = arr[1].split('*')
+        tmp_others = ['']*5 +[0]
+        for i in range(len(others)):
+            tmp_others[i] = others[i]
+
+        es_option =  EsellersCombinationalOption(names = option_names, add_price=tmp_others[0], cnt = 1, is_expose=tmp_others[2],  url=tmp_others[3], manage_code=tmp_others[4], volume=tmp_others[5])
+        return es_option
+
+
+
+
+
+
 
 
     # def bool_indexing(self, arr):
