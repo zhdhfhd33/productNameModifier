@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # parentheses = [['(', ')'], ['[', ']'], ['{', '}']]  # 괄호 안을 전부 지우기 위해 이런게 필요했다.
 
     product_col_name = '상품명'
-    myFilter = ProductNameModifier(df=df, product_col_name=product_col_name, keyword_df=keyword_df)
+    name_modifier = ProductNameModifier(df=df, product_col_name=product_col_name, keyword_df=keyword_df)
 
     # ----------------------------init-----------------------------
     """
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     """
     # del_logs=myFilter.process()
 
-    del_logs = myFilter.process_coupang()
+    del_logs = name_modifier.process_coupang()
 
     # --------------------------- 최종출력-----------------------------
     # absolute_brand_log = del_logs.absolute_brand_log
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         file_path = dir_name + '/' + dir_name1 + '/' + file_name + str(cnt)+'.' + extension
 
     with pd.ExcelWriter(file_path) as writer:
-        myFilter.df.to_excel(writer, sheet_name='기본정보', index=False)
+        name_modifier.df.to_excel(writer, sheet_name='기본정보', index=False)
 
     print(f'fileName : {file_path}')
     # print(f'len : {len(productNames)}')

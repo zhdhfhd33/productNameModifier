@@ -186,6 +186,14 @@ class ProductNameModifier():
         return res
 
 
+    def remove_duplicated(self):
+        """
+        상품명이 완전히 같으면 지우기
+        :return:
+        """
+        self.df.drop_duplicates([self.product_col_name], inplace=True, keep='first')
+
+
 
     def __process1(self):
         """
@@ -210,7 +218,7 @@ class ProductNameModifier():
         print()
         print()
 
-        # TODO : 젤 앞에 []는 무조건 브랜드임.
+        # 젤 앞에 []는 무조건 브랜드임. 정규식을 삭제
         targetStrs = [
             r'^\[.+\]' # ^는 시작을 의미.
         ]
@@ -218,7 +226,9 @@ class ProductNameModifier():
         del_logs.absolute_brand_log = (absolute_brand_log)
 
 
-        # TODO 이름 중복검사 필터
+        # 이름이 완벽하게 같을 때만 삭제
+        self.remove_duplicated()
+
         # self.get_name
 
         # 키워드 지우기

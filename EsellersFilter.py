@@ -22,6 +22,7 @@ class EsellersFilter:
         self.df_basic.drop(inplace=True, index=idx, axis=0)
         self.df_extend.drop(inplace=True, index=idx, axis=0)
 
+
     # def bool_indexing(self, arr):
     #     self.df_basic = self.df_basic[arr]
     #     self.df_extend = self.df_extend[arr]
