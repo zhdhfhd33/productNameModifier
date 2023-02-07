@@ -12,28 +12,34 @@ class EsellersCombinationalOption():
         :param add_price:
         :param cnt:
         :param expose:
+
+        아래 3개는 없어도 된다.
         :param url:
-        :param manage_code:
-        :param volume: 롯데온에서만 사용용
+        :param manage_code: 없다면 ''
+        :param volume: 롯데온에서만 사용용. 없다면 0대입.
        """
         self.names = names
         # **
         self.add_price = add_price
         self.cnt = cnt
         self.is_expose = expose
-        # 아래 3개는 없을 수도
+
         self.url = url
         self.manage_code = manage_code
         self.volume = volume
 
+    def __str__(self):
+        return f'names : {self.names}, add_price : {self.add_price}, cnt : {self.cnt}, is_expose : {self.is_expose}, url : {self.url}, manage_code : {self.manage_code}, volumn : {self.volume}'
+
 
 
 class EsellersFilter:
-    def __init__(self, df_basic, df_extend, product_col_name, option_col_name):
+    def __init__(self, df_basic, df_extend, product_col_name, option_col_name, option_type_col_name):
         self.df_basic = df_basic
         self.df_extend = df_extend
         self.product_col_name = product_col_name
         self.option_col_name = option_col_name
+        self.option_type_col_name =option_type_col_name
 
     # 기본정보, 확장정보는 같이 지워야한다. 같이 안해도 된다. 이셀러스에서 알아서 inner join함.
     def drop_row(self, idx):
@@ -58,9 +64,60 @@ class EsellersFilter:
         tmp_others = ['']*5 +[0]
         for i in range(len(others)):
             tmp_others[i] = others[i]
-
         es_option =  EsellersCombinationalOption(names = option_names, add_price=tmp_others[0], cnt = 1, is_expose=tmp_others[2],  url=tmp_others[3], manage_code=tmp_others[4], volume=tmp_others[5])
         return es_option
+
+    def __parse_df_options(self):
+        """
+        옵션 파싱해서 Series 반환. 인덱스도 동일.
+        리스트나 ndarr로 하면 안된다. 옵션이 아예없는 애들도 있기 때문에 인덱스로 join해야함.. df상태에서 다뤄야한다.
+        :return:
+        """
+        option_types = self.df_basic[self.option_type_col_name]
+        option_strs = self.df_basic[self.option_col_name]
+        idx=[]
+        parsed=[]
+        for i in option_types.index: # range사용할 때는 .iloc사용해야함. 인덱스로 다루는게 편하다. 다른 컬럼에 접근할 때도 유용함.
+            if option_types[i]=='조합형':
+                parsed.append(self.__parse_option(option_strs[i]))
+                idx.append(i)
+
+        ser = pd.Series(parsed, index=idx)
+        return ser
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def option_add_price(self):
+        """
+        옵션에 추가금있으면 지마켓, 옥션에는 등록 안된다.
+        옵션 추가금을 가격으로 반영
+        :return:
+        """
+        option_objs = self.__parse_df_options() # 리스트
+        if
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -139,7 +196,7 @@ if __name__ == '__main__':
     ef.df_basic[detail_col_name] = start + middle + end + ef.df_basic[detail_col_name]
     # ef.df_basic.drop(['start', 'middle', 'end'], inplace=True, axis=1) # 임의로 만든 컬럼 삭제
 
-    # --------------------- 출력 --------------------------------------------
+    # ----------------------------- 출력 --------------------------------------------
     file_path = '/content/drive/MyDrive/Colab Notebooks/ProductNameModifier/resources/EsellersResXls/res.xls'  # xls로 뽑아야 이셀러스에 넣을 수 있다.
 
     with pd.ExcelWriter(file_path) as writer:

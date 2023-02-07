@@ -155,15 +155,14 @@ class ProductNameModifier():
 
         """
         booleanFilter = self.df[self.product_col_name].str.contains(keywords)  # 정규표현식에서 '랜덤|싸다|최저가' 이렇게 |로 나열해주면된다.
-        self.df = self.df[~booleanFilter]
         del_cnt = self.df[booleanFilter == True].count()
+        self.df = self.df[~booleanFilter]
         row_cnt = self.df[self.product_col_name].count()
 
         return del_cnt, row_cnt
 
     def get_name_similarity(self, func, k):
         """
-        TODO : 테스트
         func : 함수. 매개변수 2개. return 이름의 유사도를 측정하는 방법.
         k : k%로 유사도가 k%를 넘으면 저장해서 보여준다. 이후는 사람이 비교함. ex) k=50
         {원본 : [비슷한 상품명]}을 만들어서 df로 뽑으면 컬럼이 상품명이 된다.
@@ -211,7 +210,7 @@ class ProductNameModifier():
         print()
 
         # 들어있다면 row 자체를 삭제. 젤 먼저 해야한다.
-        row_drop_keyword = '랜덤|렌덤|새총|새 총|섹시|sexy|칼|나이프|리얼돌|토르소'
+        row_drop_keyword = '랜덤|렌덤|새총|새 총|섹시|sexy|칼 |나이프|리얼돌|토르소|티팬티|티펜티|해외|음경'
         del_cnt, row_cnt = self.contain_row_drop(row_drop_keyword)
         print('booleanFilter count : ', del_cnt)
         print('row 삭제 후 상품명: ', row_cnt)
