@@ -1,6 +1,16 @@
 import pandas as pd
 from main.libs import *
 
+from collections import namedtuple
+
+class Option50Log():
+    def __init__(self,idx, len):
+        self.idx = idx
+        self.len = len
+
+    def __str__(self):
+        return f'idx : {self.idx} len : {self.len}'
+
 
 class EsellersCombinationalOption():
     def __init__(self, names, add_price, cnt, is_expose, url='', manage_code='', volume=0):
@@ -116,48 +126,49 @@ class EsellersFilter:
         :return:
         """
         ser = self.__parse_df_options()  # 시리즈반환. EsellersCominationOption 객체가 들어있다.
-
+        del_logs = []
         # 추가금을 0으로하고 가격을 추가
         for i in ser.index:
             add_prices = [_.add_price for _ in ser[i]]  # 가격만 뽑는다.
             max_add_price = max(add_prices)
+
+            # del log
+            if max_add_price != 0:
+                del_logs.append(DelLog(content=None, regexp=None, idx=i))
+
             self.df_basic[self.price_col_name][i] += max_add_price
             for j in ser[i]:
                 j.add_price = 0
         # 셀 하나에 들어갈 수 있게  합치기
-        res_li = []  # 분리해서 짜 놓는게 나중에 로그 남기기에도 편하다.
-        for i in ser.index: # i는 배열
-            joined='\n'.join(i)
-            # res = ''
-            # for j in ser[i]:
-            #     res += j.to_str()
-            #     res += '\n'
-            # res = res[:-2]  # 마지막 \n제거
-            res_li.append(joined)
+        res_li = []
+        for i in ser.index:
+            str_li = [_.to_str() for _ in ser[i]]
+            res_li.append('\n'.join(str_li))
 
         res_ser = pd.Series(res_li, ser.index)
         self.df_basic[self.option_col_name] = res_ser
 
-    def ption50_over_filter(self, ):
+    def option50_over_filter(self, ):
         """
         옵션이 50개 넘어가면 50개 까지만 등록. for 지마켓, 옥션
         :return:
         """
+        del_logs = []
         ser = self.__parse_df_options()
         for i in ser.index:
-            if len(ser[i])>50:
-                ser[i] = ser[i][:51] # 50개 까지만 넣기기
+            LEN = len(ser[i])
+            if LEN > 50:
+                del_logs.append(Option50Log(idx=i, len=LEN))
+                ser[i] = ser[i][:51]  # 50개 까지만 넣기기
 
-        res_li=[]
+        res_li = []
         for i in ser.index:
-            res_li.append('\n'.join(i))
-        res_ser=pd.Series(res_li, index=ser.index)
+            str_li = [_.to_str() for _ in ser[i]]
+            res_li.append('\n'.join(str_li))
+
+        res_ser = pd.Series(res_li, index=ser.index)
         self.df_basic[self.option_col_name] = res_ser
-
-
-
-
-
+        return del_logs
 
 
 # TODO : 일단은 엑셀로 진행

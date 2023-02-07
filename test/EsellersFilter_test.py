@@ -36,4 +36,12 @@ def test_option_add_price_filter():
     with pd.ExcelWriter('test.xlsx') as writer:
         ef.df_basic.to_excel(writer, index=False)
 
-test_option_add_price_filter()
+def test_option50_over_filter():
+    ef = init()
+    d=ef.option50_over_filter()
+    for i in d:
+        print(i)
+
+test_option50_over_filter()
+
+
