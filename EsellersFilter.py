@@ -34,12 +34,13 @@ class EsellersCombinationalOption():
 
 
 class EsellersFilter:
-    def __init__(self, df_basic, df_extend, product_col_name, option_col_name, option_type_col_name):
+    def __init__(self, df_basic, df_extend, product_col_name, option_col_name, option_type_col_name, price_col_name):
         self.df_basic = df_basic
         self.df_extend = df_extend
-        self.product_col_name = product_col_name
-        self.option_col_name = option_col_name
-        self.option_type_col_name =option_type_col_name
+        self.product_col_name = product_col_name # 상품명*
+        self.option_col_name = option_col_name  # 선택사항 상세정보
+        self.option_type_col_name =option_type_col_name #선택사항 옵션명
+        self.price_col_name  = price_col_name # 판매가*
 
     # 기본정보, 확장정보는 같이 지워야한다. 같이 안해도 된다. 이셀러스에서 알아서 inner join함.
     def drop_row(self, idx):
@@ -71,42 +72,43 @@ class EsellersFilter:
         """
         옵션 파싱해서 Series 반환. 인덱스도 동일.
         리스트나 ndarr로 하면 안된다. 옵션이 아예없는 애들도 있기 때문에 인덱스로 join해야함.. df상태에서 다뤄야한다.
-        :return:
+        :return: 시리즈
         """
-        option_types = self.df_basic[self.option_type_col_name]
-        option_strs = self.df_basic[self.option_col_name]
+        option_types = self.df_basic[self.option_type_col_name].str.strip() # 혹시 모르니 strip()
+        option_str = self.df_basic[self.option_col_name] # 시리즈
         idx=[]
         parsed=[]
         for i in option_types.index: # range사용할 때는 .iloc사용해야함. 인덱스로 다루는게 편하다. 다른 컬럼에 접근할 때도 유용함.
+            row=[]
             if option_types[i]=='조합형':
-                parsed.append(self.__parse_option(option_strs[i]))
+                options = option_str[i].split('\n') # 개행으로 끊어야한다.
+                for j in options:
+                    row.append(self.__parse_option(j))
+
+                parsed.append(row)
                 idx.append(i)
 
         ser = pd.Series(parsed, index=idx)
         return ser
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     def option_add_price(self):
         """
         옵션에 추가금있으면 지마켓, 옥션에는 등록 안된다.
-        옵션 추가금을 가격으로 반영
+        '옵션 추가금'을 '가격'으로 반영
         :return:
         """
-        option_objs = self.__parse_df_options() # 리스트
-        if
+        ser = self.__parse_df_options() # 시리즈반환. 객체가 들어있다.
+        for i in ser.index:
+            parsed_obj = ser[i]
+            if parsed_obj.add_price > 0:
+                self.df_basic[self.price_col_name] += int(parsed_obj.add_price)
+                parsed_obj.add_price=0
+
+
+        #TODO : 하는중
+
+
 
 
 
