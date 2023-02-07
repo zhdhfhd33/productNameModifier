@@ -1,5 +1,5 @@
 import pandas as pd
-from main.libs import replace_by_regexp
+from main.libs import *
 
 
 class EsellersCombinationalOption():
@@ -29,20 +29,19 @@ class EsellersCombinationalOption():
         return f'option_names : {self.names}, add_price : {self.add_price}, cnt : {self.cnt}, is_expose : {self.is_expose}, url : {self.url}, manage_code : {self.manage_code}, volumn : {self.volume}'
 
     def to_str(self):
-        res=''
+        res = ''
         for i in self.names:
-            res+= i + '*'
+            res += i + '*'
 
-
-        res+='*' # 하나만 더 추가하면 **가 된다.
-        after_members=[self.add_price, self.cnt, self.is_expose, self.url, self.manage_code,self.volume if self.volume!=0 else '']
+        res += '*'  # 하나만 더 추가하면 **가 된다.
+        after_members = [self.add_price, self.cnt, self.is_expose, self.url, self.manage_code,
+                         self.volume if self.volume != 0 else '']
         for i in after_members:
-            res+= str(i) + '*'
+            res += str(i) + '*'
 
         filtered_names, delogs = replace_by_regexp([res], [r'\*+$'], [''])
-        assert len(filtered_names)==1 and len(delogs)==1
+        assert len(filtered_names) == 1 and len(delogs) == 1
         return filtered_names[0]
-
 
 
 class EsellersFilter:
@@ -93,7 +92,7 @@ class EsellersFilter:
         """
         옵션 파싱해서 Series 반환. 인덱스도 동일.
         리스트나 ndarr로 하면 안된다. 옵션이 아예없는 애들도 있기 때문에 인덱스로 join해야함.. df상태에서 다뤄야한다.
-        :return: series
+        :return: series. ser[i]=[obj1, obj2, obj3,,,]
         """
         option_types = self.df_basic[self.option_type_col_name].str.strip()  # 혹시 모르니 strip()
         option_str = self.df_basic[self.option_col_name]  # 시리즈
@@ -112,36 +111,53 @@ class EsellersFilter:
 
     def option_add_price_filter(self):
         """
-        옵션에 추가금있으면 지마켓, 옥션에는 등록 안된다.
+        옵션에 추가금있으면 지마켓, 옥션에는 등록 안된다. (지마켓, 옥션)
         '옵션 추가금'을 '가격'으로 반영
         :return:
         """
-        ser = self.__parse_df_options()  # 시리즈반환. 객체가 들어있다.
+        ser = self.__parse_df_options()  # 시리즈반환. EsellersCominationOption 객체가 들어있다.
+
+        # 추가금을 0으로하고 가격을 추가
         for i in ser.index:
             add_prices = [_.add_price for _ in ser[i]]  # 가격만 뽑는다.
             max_add_price = max(add_prices)
             self.df_basic[self.price_col_name][i] += max_add_price
             for j in ser[i]:
                 j.add_price = 0
-
-        res_li=[] # 분리해서 짜 놓는게 나중에 로그남기기에도 편하다.
-        for i in ser.index:
-            res=''
-            for j in ser[i]:
-                res+=j.to_str()
-                res+='\n'
-            res=res[:-2] # 마지막 \n제거
-            res_li.append(res)
+        # 셀 하나에 들어갈 수 있게  합치기
+        res_li = []  # 분리해서 짜 놓는게 나중에 로그 남기기에도 편하다.
+        for i in ser.index: # i는 배열
+            joined='\n'.join(i)
+            # res = ''
+            # for j in ser[i]:
+            #     res += j.to_str()
+            #     res += '\n'
+            # res = res[:-2]  # 마지막 \n제거
+            res_li.append(joined)
 
         res_ser = pd.Series(res_li, ser.index)
         self.df_basic[self.option_col_name] = res_ser
 
+    def ption50_over_filter(self, ):
+        """
+        옵션이 50개 넘어가면 50개 까지만 등록. for 지마켓, 옥션
+        :return:
+        """
+        ser = self.__parse_df_options()
+        for i in ser.index:
+            if len(ser[i])>50:
+                ser[i] = ser[i][:51] # 50개 까지만 넣기기
 
-        # TODO : **를 사용해서 문자열을 만들어서 다시 df에 넣어야한다.
+        res_li=[]
+        for i in ser.index:
+            res_li.append('\n'.join(i))
+        res_ser=pd.Series(res_li, index=ser.index)
+        self.df_basic[self.option_col_name] = res_ser
 
-    # def bool_indexing(self, arr):
-    #     self.df_basic = self.df_basic[arr]
-    #     self.df_extend = self.df_extend[arr]
+
+
+
+
 
 
 # TODO : 일단은 엑셀로 진행
