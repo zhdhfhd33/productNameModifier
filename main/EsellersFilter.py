@@ -208,7 +208,7 @@ class EsellersFilter:
             down_img(imglink_ser[i], save_path)
             print(save_path)
 
-    def addstr_to_img(self, before_dirpath, after_dirpath, text_ratio, logo_ratio):
+    def img_filter(self, before_dirpath, after_dirpath, text_ratio, logo_ratio):
         """
         :param before_dirpath: 마지막에 / 로 끝나야한다.
         :param after_dirpath: 마지막에 /로 끝나야 한다.

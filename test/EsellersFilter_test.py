@@ -69,9 +69,10 @@ def test_img_size():
     print(f'min x : {min(x)}')
     print(f'min y : {min(y)}')
 
-def test_addstr_to_img():
+def test_img_filter():
+
     ef=init()
-    ef.addstr_to_img('resources/imgs/img_down_test/', 'resources/imgs/after_processing/', 0.02, 0.1) # 0.02가 딱 맞다.
+    ef.img_filter('resources/imgs/img_down_test/', 'resources/imgs/after_processing/', 0.02, 0.1) # 0.02가 딱 맞다.
 
 
 
@@ -83,7 +84,8 @@ def test_addstr_to_img():
 # test_option_add_price_filter()
 # test_img_down_all()
 # test_img_size()
-test_addstr_to_img()
+test_img_filter()
+
 
 
 
