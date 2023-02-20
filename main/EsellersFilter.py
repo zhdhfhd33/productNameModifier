@@ -1,19 +1,33 @@
-import pandas as pd
-from main.libs import *
+import os.path
 
-from collections import namedtuple
+import pandas as pd
+
+from main import core
+import urllib.request as req
+
+from PIL import Image, ImageFont, ImageDraw
+from IPython.display import display
+
 
 class Option50Log():
-    def __init__(self,idx, len):
+    def __init__(self, idx, len, after_len):
+        """
+        :param idx: 데이터프레임 idx
+        :param len: 처리 전 옵션 개수
+        :param after_len: 처리 후 옵션 개수
+        """
         self.idx = idx
         self.len = len
+        self.after_len = after_len
 
     def __str__(self):
         return f'idx : {self.idx} len : {self.len}'
 
 
 class EsellersCombinationalOption():
-    def __init__(self, names, add_price, cnt, is_expose, url='', manage_code='', volume=0):
+    def __init__(self, names, add_price, cnt, is_expose, url='', manage_code='', volume=0
+                 ):
+
         """
         :param names:
         :param add_price:
@@ -49,21 +63,23 @@ class EsellersCombinationalOption():
         for i in after_members:
             res += str(i) + '*'
 
-        filtered_names, delogs = replace_by_regexp([res], [r'\*+$'], [''])
+        filtered_names, delogs = core.replace_by_regexp([res], [r'\*+$'], [''])
         assert len(filtered_names) == 1 and len(delogs) == 1
         return filtered_names[0]
 
 
 class EsellersFilter:
     def __init__(self, df_basic, df_extend, product_col_name='상품명*', option_col_name='선택사항 상세정보',
-                 option_type_col_name='선택사항 타입'
-                 , price_col_name='판매가*'):
+                 option_type_col_name='선택사항 타입', price_col_name='판매가*', represent_img_col_name='이미지1(대표/기본이미지)*',
+                 my_code='판매자 관리코드'):
         self.df_basic = df_basic
         self.df_extend = df_extend
         self.product_col_name = product_col_name  # 상품명*
         self.option_col_name = option_col_name  # 선택사항 상세정보
         self.option_type_col_name = option_type_col_name  # 선택사항 옵션명
         self.price_col_name = price_col_name  # 판매가*
+        self.represent_img_col_name = represent_img_col_name
+        self.my_code = my_code
 
     # 기본정보, 확장정보는 같이 지워야한다. 같이 안해도 된다. 이셀러스에서 알아서 inner join함.
     def drop_row(self, idx):
@@ -98,11 +114,11 @@ class EsellersFilter:
                                                 volume=tmp_others[5])
         return es_option
 
-    def __parse_df_options(self):
+    def parse_df_options(self):
         """
         옵션 파싱해서 Series 반환. 인덱스도 동일.
         리스트나 ndarr로 하면 안된다. 옵션이 아예없는 애들도 있기 때문에 인덱스로 join해야함.. df상태에서 다뤄야한다.
-        :return: series. ser[i]=[obj1, obj2, obj3,,,]
+        :return: series. ser[i]=[EsellersCombinationalOption1, EsellersCombinationalOption2,,,,]
         """
         option_types = self.df_basic[self.option_type_col_name].str.strip()  # 혹시 모르니 strip()
         option_str = self.df_basic[self.option_col_name]  # 시리즈
@@ -125,7 +141,7 @@ class EsellersFilter:
         '옵션 추가금'을 '가격'으로 반영
         :return:
         """
-        ser = self.__parse_df_options()  # 시리즈반환. EsellersCominationOption 객체가 들어있다.
+        ser = self.parse_df_options()  # 시리즈반환. EsellersCominationOption 객체가 들어있다.
         del_logs = []
         # 추가금을 0으로하고 가격을 추가
         for i in ser.index:
@@ -133,8 +149,9 @@ class EsellersFilter:
             max_add_price = max(add_prices)
 
             # del log
-            if max_add_price != 0:
-                del_logs.append(DelLog(content=None, regexp=None, idx=i))
+            # if max_add_price != 0:
+            # del_logs.append(DelLog(content=None, regexp=None, idx=i))
+            # TODO : log남기기. 우선순위낮음.
 
             self.df_basic[self.price_col_name][i] += max_add_price
             for j in ser[i]:
@@ -145,8 +162,9 @@ class EsellersFilter:
             str_li = [_.to_str() for _ in ser[i]]
             res_li.append('\n'.join(str_li))
 
-        res_ser = pd.Series(res_li, ser.index)
-        self.df_basic[self.option_col_name] = res_ser
+        zero_add_price_ser = pd.Series(res_li, ser.index)
+        self.df_basic[self.option_col_name] = zero_add_price_ser
+        return zero_add_price_ser, del_logs
 
     def option50_over_filter(self, ):
         """
@@ -154,12 +172,12 @@ class EsellersFilter:
         :return:
         """
         del_logs = []
-        ser = self.__parse_df_options()
+        ser = self.parse_df_options()
         for i in ser.index:
             LEN = len(ser[i])
             if LEN > 50:
-                del_logs.append(Option50Log(idx=i, len=LEN))
                 ser[i] = ser[i][:51]  # 50개 까지만 넣기기
+                del_logs.append(Option50Log(idx=i, len=LEN, after_len=len(ser[i])))
 
         res_li = []
         for i in ser.index:
@@ -170,20 +188,80 @@ class EsellersFilter:
         self.df_basic[self.option_col_name] = res_ser
         return del_logs
 
+    def img_down_all(self, save_dir):
+        """
+        :param save_dir 저장하고자 하는 폴더 ex)2023-2-13-오너클랜최신순500. 엑셀이름 그대로 사용.
+        :return:
+        """
 
-# TODO : 일단은 엑셀로 진행
-def set_price_by_ratio(series, blocks, ratios):
-    """
-    series
-    blocks = [(500, 1000), (1001, 1500), (1501, 2000), (2000, 3000), (3001, 20000)]
-    ratios = [4, 3, 3, 2, 1.6]
-    """
-    pass
+        if not os.path.isdir(save_dir):  # 없을 때만 만든다.
+            os.makedirs(save_dir)
+        down_img = lambda url, savdir: req.urlretrieve(url, savdir)  # 임시함수
+        imglink_ser = self.df_basic[self.represent_img_col_name]
+        my_code_ser = self.df_basic[self.my_code]
+
+        for i in imglink_ser.index:
+            # 확장자 얻기.
+            # 파일이름은 판매자관리코드를 사용
+            _, ext = os.path.splitext(imglink_ser[i])
+            save_path = save_dir + my_code_ser[i] + ext
+            down_img(imglink_ser[i], save_path)
+            print(save_path)
+
+    def addstr_to_img(self, before_dirpath, after_dirpath, text_ratio, logo_ratio):
+        """
+        :param before_dirpath: 마지막에 / 로 끝나야한다.
+        :param after_dirpath: 마지막에 /로 끝나야 한다.
+        :param text_ratio 0.1 # 10%
+        :param y_ratio 0.1 # 10%
+        :return:
+        """
+        if not os.path.isdir(after_dirpath):  # after_dirpath 없을 때만 만든다.
+            os.makedirs(after_dirpath)
+
+        imglist = os.listdir(before_dirpath)
+        fontpath = 'C:/Users/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/main/resources/GmarketSansTTF/GmarketSansTTFBold.ttf'
+        # img = Image.open('이미지다운1.jpg')
+
+        logo = Image.open('C:/Users\/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/main/resources/logo.png')
+
+        fontsize = 30  # 기본값.
+
+        for i in imglist:
+            img = Image.open(before_dirpath + i)
+            # 이미지 마다 사이즈는 다르다.
+            x, y = img.size
+            fontsize = int(x * text_ratio)
+
+            logo_x, logo_y = logo.size # 로고 크기
+            logo_coefficient = (x * logo_ratio) / logo_x  # logo_y * logo_coefficient 하면 x, y비율이 보존된다. 전체 크기의
+            resized_logo = logo.resize((int(logo_x * logo_coefficient), int(logo_y * logo_coefficient)))
+            # TODO 이미지 위치 좀 더 밑에 해야한다. 좀 더 오른쪽
+
+            font = ImageFont.truetype(fontpath, fontsize)
+            imgdraw = ImageDraw.Draw(img)
+            imgdraw.text((10, 40), '넥스트 레벨 스토어(널리)', (0, 0, 0), font=font)  # (11,81,238) 파란색
+            cv2_logo = core.piltocv2(resized_logo)
+            cv2_img = core.piltocv2(img)
+            after_cv2_img = core.paste_logo(cv2_logo, cv2_img, 50, 40) # 로고 씌우기. 가로,세로
+            img = core.cv2topil(after_cv2_img)
+            # img.paste(im=resized_logo, box=(fontsize + 25, fontsize + 10))  # 사진 덮어 씌우기.
+            after_path = after_dirpath + i
+            img.save(after_path)
+            print(after_path)
+
+        # 이미지읽기
+        # 사이즈 변경
+        # 노이즈 추가
+        # 배경제거 - 쉽지않다.
+        # 사이드에 글이나 사진 추가
+        # img 반환
+        # 이미지 한번에 for문으로 읽으면 터질듯. with으로 open close해야한다.
 
 
 if __name__ == '__main__':
     # ProductNameModifier.pdConfig()
-    libs.pdConfig()
+    core.pdConfig()
     # path = '2023-1-15-오너클랜/2023-1-15-오너클랜템플릿1-수정일1개월.xls'
     path = '/content/drive/MyDrive/Colab Notebooks/ProductNameModifier/2023-1-15-오너클랜/템플릿1 유료배송 수정일 1개월.xls'
 

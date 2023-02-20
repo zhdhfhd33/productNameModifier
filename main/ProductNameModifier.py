@@ -1,11 +1,11 @@
 import re
-from libs import *
 from ReplacePair import ReplacePair
 from DelLog import DelLog
 
 from DelLogs import DelLogs
-
-
+import pandas as pd
+import random
+from core import *
 
 class ProductNameModifier():
     def __init__(self, df, product_col_name, keyword_df):
@@ -43,7 +43,6 @@ class ProductNameModifier():
 
             filteredNames.append(filteredName if filteredName != '' else val_i)
         return filteredNames, del_logs
-
 
     def remove_keywords(self, keywords, replaces):
         """
@@ -123,27 +122,25 @@ class ProductNameModifier():
             replace_strs.append(i_val.replace)
         filtered_names, del_logs = self.__replaceRegexpStrs(target_strs, replace_strs)
 
-
         # 호환 여러번 들어가면 젤 뒤의 호환만 남긴다.
         # 마지막에 '호환' 하나는 놔두고 지워야하기 때문에 새로 구현할 수 밖에 없었다.
         # 'z플립4 호환' 이렇게 하고 싶었는데 z플립 호환 4 이렇게 될 것이다.
-        filtered_names2=[]
-        del_logs2=[]
+        filtered_names2 = []
+        del_logs2 = []
         regex = re.compile(r'호환')
         for i, i_val in enumerate(filtered_names):
             indicies = [_ for _ in re.finditer(regex, i_val)]
-            list_i = list(i_val) # str to list
-            if len(indicies) > 1: # 호환이 여러 개 일때
-                for j in range(len(indicies)-2, -1, -1): # 거꾸로 해야 del 가능. 마지막 하나는 남겨둬야하기 때문에 -2.
+            list_i = list(i_val)  # str to list
+            if len(indicies) > 1:  # 호환이 여러 개 일때
+                for j in range(len(indicies) - 2, -1, -1):  # 거꾸로 해야 del 가능. 마지막 하나는 남겨둬야하기 때문에 -2.
                     start_idx = indicies[j].span()[0]
                     end_idx = indicies[j].span()[1]
-                    del_logs2.append(DelLog(i, list_i[start_idx:end_idx], '제거'))
+                    del_logs2.append(DelLog(i, ''.join(list_i[start_idx:end_idx]), '제거'))
                     del list_i[start_idx:end_idx]
             filtered_names2.append(''.join(list_i))
-        self.df[self.product_col_name] = filtered_names2 # 대입
-        sum_del_logs = del_logs+del_logs2 # del_log 합치기
+        self.df[self.product_col_name] = filtered_names2  # 대입
+        sum_del_logs = del_logs + del_logs2  # del_log 합치기
         return filtered_names, sum_del_logs
-
 
     def contain_row_drop(self, keywords):
         """
@@ -172,7 +169,7 @@ class ProductNameModifier():
         LEN = len(self.nd)
         for i in range(LEN):
             for j in range(i + 1, LEN):
-                sim = libs.simple_minlen_name_similarity(nd[i], nd[j]) # libs에 있는 함수 사용
+                sim = simple_minlen_name_similarity(nd[i], nd[j])  # libs에 있는 함수 사용
                 if sim >= k:
                     if nd[i] in res:  # 자동으로 키를 준다.
                         res[nd[i]].append(nd[j])
@@ -181,15 +178,27 @@ class ProductNameModifier():
                         res[nd[i]].append(nd[j])
         return res
 
-
-    def remove_duplicated(self):
+    def remove_duplicated_filter(self):
         """
         상품명이 완전히 같으면 지우기
         :return:
         """
         self.df.drop_duplicates([self.product_col_name], inplace=True, keep='first')
 
+    def random_mix_filter(self):
+        """
+        ' '을 기준으로 무작위로 섞는다. 젤 마지막에 실행해야한다.
+        :return: 없다.
+        """
+        name_ser = self.df[self.product_col_name]
+        shuffled = []
+        for i in name_ser.index:
+            spl = name_ser[i].split(' ')
+            random.shuffle(spl)
+            shuffled.append(' '.join(spl))
 
+        shuffled_ser = pd.Series(shuffled, index=name_ser.index)
+        self.df[self.product_col_name] = shuffled_ser
 
     def __process1(self):
         """
@@ -216,30 +225,18 @@ class ProductNameModifier():
 
         # 젤 앞에 []는 무조건 브랜드임. 정규식을 삭제
         targetStrs = [
-            r'^\[.+\]' # ^는 시작을 의미.
+            r'^\[.+\]'  # ^는 시작을 의미.
         ]
         absolute_brand_filtered, absolute_brand_log = self.removeReg(targetStrs)
         del_logs.absolute_brand_log = (absolute_brand_log)
 
-
         # 이름이 완벽하게 같을 때만 삭제
-        self.remove_duplicated()
+        self.remove_duplicated_filter()
 
-        # self.get_name
 
         # 키워드 지우기
-        # removingStrs = ['후니케이스', '다번다', '뷰티컬'
-        #     , '아이윙스', '피포페인팅', '하이셀', '에이브', '이거찜', 'PVC', '리빙114', '슬림스', '모던스', 'SNW', 'ABM도매콜', '애니포트', '헤어슈슈', '베이비캠프',
-        #                 '가디언블루', '그린피앤에스', '템플러', '클리카', '유앤미', '저혈당', '레인보우', 'ABM', '도매콜', '성기', '애니포트', '정확도', '특가',
-        #                 '세일', '할인', '최저가', '액티몬', '엑티몬', '특가', '세일', '할인', '최저가', 'TWEEZER', 'coms', '문구List', 'PC용품', '제이앤지', '네오텍스', 'NEWUM', '네오텍스', '네온샌드', '키친프리'
-        #                 ,'헨리제이에스','로하스', '비츠온', 'NEW', '미러범퍼', '아몬스', '정밀 핀셋', '드리온', '금홍팬시', 'kimspp', 'GPOP', '삼아', '우일파워', '파워맨', '로마네', '매직온'
-        #                 , '폼폼푸린', 'SYSMAX', 'bob', '샤샤', '데이즈', '쓰리몰', '프릴카라', '아잠', '풍선대통령', '딜라이트 ', 'New', '바니랜드', '은창', '자미로운', '리브리움', '비온뒤'
-        #                 , '뉴벌크', '플레플레', '대성푸드', '그린무역', '네추럴스파이스', '면사랑', '이엔푸드', '이츠웰', 'SIB', 'TYESO', 'BEAT', 'BTWIN'
-        #                 ]
-        # 중복제거
         col_before = '변경 전'
         col_after = '변경 후'
-
         removingStrs = self.keyword_df[col_before].tolist()
         replaces = self.keyword_df[col_after].tolist()
         before_len = len(removingStrs)
@@ -323,24 +320,16 @@ class ProductNameModifier():
         print('duplicatedSpaceRemoved : \n', self.df[self.product_col_name].head(10))
         print()
         print()
+
+        self.random_mix_filter() #젤 마지막에 호출해야한다.
         return del_logs
+
+
 
     def process_coupang(self):
         """
         """
         del_logs = self.__process1()
-
-        # 이것도 순서대로 바꾸기 때문에 문자열이 긴 것부터 바꿔야한다. 근데 ()이런거 때문에 애매... 이건 완벽하게 하지말고 엑셀에서 눈으로 보면서 수정하자!
-        # brand_regex = ['갤럭시 (?!워치)', '갤럭시워치', '갤럭시 워치'  # (?!x) 뒤에 x가 나오는 것은 제외.
-        #     , '애플 (?!워치)', '애플워치', '애플 워치'
-        #     , '아이폰 (?!워치)', '아이폰워치', '아이폰 워치'
-        #     , '호환 호환', '호환  호환']  # '갤럭시워치'를 '갤럭시 워치'로 바꾸기 때문에 '갤럭시워치' -> '갤럭시 워치 호환 ' -> '갤럭시 워치 호환 호환'으로 바뀐다. 그래서 '호환 호환'을 처리해 줌
-
-        # 나중에 스페이스 2개는 처리되기 때문에 뒤에 스페이스 붙이는게 로버스트함.
-        # replace_strs = ['갤럭시 호환 ', '갤럭시 워치 호환 ', '갤럭시 워치 호환 '
-        #     , '애플 호환 ', '애플 워치 호환 ', '애플 워치 호환 '
-        #     , '아이폰 호환 ', '아이폰 워치 호환 ', '아이폰 워치 호환 '
-        #     , '호환 ', '호환 ']
 
         # 브랜드 명 뒤에는 '호환' 붙이기. for 쿠팡.
         brand_replace_pairs = []
@@ -354,22 +343,19 @@ class ProductNameModifier():
         brand_replace_pairs.append(ReplacePair(r'애플 워치', '애플 워치 호환 '))
 
         # brand_replace_pairs.append(ReplacePair(r'아이폰 (?!워치)', '아이폰 호환 '))
-        brand_replace_pairs.append(ReplacePair(r'아이폰', '아이폰 호환 ')) #TODO : 아이폰13 케이스 아이폰 13 호환으로 하고 싶었는데 일단 아이폰 호환 13으로 했다..
+        brand_replace_pairs.append(
+            ReplacePair(r'아이폰', '아이폰 호환 '))  # TODO : 아이폰13 케이스 아이폰 13 호환으로 하고 싶었는데 일단 아이폰 호환 13으로 했다..
         brand_replace_pairs.append(ReplacePair(r'아이폰워치', '아이폰 워치 호환 '))
         brand_replace_pairs.append(ReplacePair(r'아이폰 워치', '아이폰 워치 호환 '))
 
-
         brand_replace_pairs.append(ReplacePair(r'[zZ]플립', 'z플립 호환 '))
         brand_replace_pairs.append(ReplacePair(r'[zZ]폴드', 'z폴드 호환 '))
-
-
 
         # brand_replace_pairs.append(ReplacePair('호환 호환', '호환 '))
         # brand_replace_pairs.append(ReplacePair('호환  호환', '호환 '))
 
         brand_filterd, coupang_brand_filter_log = self.brandFilter(brand_replace_pairs)
-        del_logs.coupang_brand_filter_log =(coupang_brand_filter_log)
-
+        del_logs.coupang_brand_filter_log = (coupang_brand_filter_log)
 
         # 좌우 공백 삭제, strip. 인덱스가 1부터 시작인 상황.
         stripList = self.df[self.product_col_name].tolist()
@@ -386,4 +372,7 @@ class ProductNameModifier():
         print('duplicatedSpaceRemoved : \n', self.df[self.product_col_name].head(10))
         print()
         print()
+
+        self.random_mix_filter()
+
         return del_logs

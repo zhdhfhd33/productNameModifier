@@ -1,16 +1,16 @@
 import os.path
 
 import pandas as pd
-import libs
+from core import *
 from ProductNameModifier import ProductNameModifier
 
 if __name__ == '__main__':
     # pd config
-    libs.pdConfig()
+    pdConfig()
     keyword_path = 'resources/상품명가공 키워드지우기 리스트.xlsx'
 
     # \하나는 인식못한다. /를 쓰거나 \\ 2개 써야 함. 밑에 함수떄문에 /를 써야한다.
-    path = "C:/Users/minkun/Downloads/신학기기획전240.xls"
+    path = "C:/Users/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/main/test.xlsx"
 
     # 읽기
     df = pd.read_excel(path)
@@ -43,16 +43,16 @@ if __name__ == '__main__':
     # special_char_log = del_logs.special_char_log
     # coupang_brand_filter_log = del_logs.coupang_brand_filter_log
 
-    file_name , extension = libs.get_file_name(path, sep='/')
-    extension='xlsx'
+    file_name, extension = get_file_name(path, sep='/')
+    extension = 'xlsx'
     cnt = 1
     dir_name = 'resources'
     dir_name1 = 'resXls'
-    file_path = dir_name + '/' + dir_name1 + '/' + file_name + '_'+str(cnt) +'.'+extension
+    file_path = dir_name + '/' + dir_name1 + '/' + file_name + '_' + str(cnt) + '.' + extension
 
     while os.path.isfile(file_path):  # 여러번 실행시킬 수 있도록.
         cnt += 1
-        file_path = dir_name + '/' + dir_name1 + '/' + file_name +'_'+ str(cnt)+'.' + extension
+        file_path = dir_name + '/' + dir_name1 + '/' + file_name + '_' + str(cnt) + '.' + extension
 
     with pd.ExcelWriter(file_path) as writer:
         name_modifier.df.to_excel(writer, sheet_name='기본정보', index=False)
@@ -60,18 +60,18 @@ if __name__ == '__main__':
     print(f'fileName : {file_path}')
     # print(f'len : {len(productNames)}')
 
-    del_log_dir = dir_name +'/' +'del_log_' +file_name+'.'+extension
+    del_log_dir = dir_name + '/' + 'del_log/'+'del_log_' + file_name + '.' + extension
+
 
     with pd.ExcelWriter(del_log_dir) as writer:
-        del_log1_df = del_logs.absolute_to_df() # 첨에 나오는 []는 무조건 브랜드
+        del_log1_df = del_logs.absolute_to_df()  # 첨에 나오는 []는 무조건 브랜드
 
-        del_log2_df = del_logs.keyword_to_df() # 키워드 삭제
+        del_log2_df = del_logs.keyword_to_df()  # 키워드 삭제
 
         del_log3_df = del_logs.regexp_to_df()  # 정규표현식
 
         del_log4_df = del_logs.special_char_to_df()  # 특수문자 제거
-        del_log5_df = del_logs.coupang_brand_to_df() # 쿠팡 브랜드. 호환.
-
+        del_log5_df = del_logs.coupang_brand_to_df()  # 쿠팡 브랜드. 호환.
 
         del_log1_df.to_excel(writer, sheet_name='처음에 나오는 대활호 삭제', index=False)
         del_log2_df.to_excel(writer, sheet_name='키워드 삭제', index=False)
