@@ -81,10 +81,21 @@ def test_s3_upload_img(): # 테완
     ef=init()
     path = "C:/Users/minkun/Downloads/test.jpg"
     bucket_name = 'my-shopping-img'
-    file_basename = 'test_upload_img_s3123123' # 확장자없이 사용.
+    filename = 'test_upload_img_s3123123.jpg' # 확장자 있이 사용. 확장자 없이 사용하면 내부적으로 처리해야하는게 늘고 역할이 2개가 된다.
+    s3= aws_core.s3_getclient()
 
-    url = ef.s3_upload_img(path=path, bucket_name=bucket_name, file_basename=file_basename) # url을 반환한다.
+    url = ef.s3_upload_img(s3_client=s3, path=path, bucket_name=bucket_name, s3_file_name=filename) # url을 반환한다.
     print(url) # url에 접속하면 사진이 뜬다.
+
+
+def test_s3_upload_img_all():
+    ef=init()
+    urls = ef.s3_upload_img_all('C:/Users/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/test/resources/imgs/after_processing/') # 상대경로를 넣으면 안된다. 항상 절대경로를 사용해야한다. 테스트 프레임웤이 아니라서 main으로 넘어가면 경로가 달라진다..
+
+
+
+    for i in urls:
+        print(i)
 
 
 
@@ -101,6 +112,8 @@ def test_s3_upload_img(): # 테완
 # test_img_size()
 # test_img_filter()
 test_s3_upload_img()
+
+# test_s3_upload_img_all()
 
 
 

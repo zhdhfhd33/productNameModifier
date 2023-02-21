@@ -180,4 +180,13 @@ def cv2topil(cv2_img):
     pil_image = PIL.Image.fromarray(color_coverted)
     return pil_image
 
+#
+# def path_win_to_linux(path):
+#     assert isinstance(path, str)
+#
+#     new = path.replace('\\', '/')
+#     return new
+
+
+
 

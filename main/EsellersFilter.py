@@ -8,6 +8,7 @@ import urllib.request as req
 from PIL import Image, ImageFont, ImageDraw
 # import aws_core
 from main import aws_core
+from main import security
 
 
 
@@ -250,32 +251,52 @@ class EsellersFilter:
             return after_path
 
 
-    def s3_upload_img(self, path, bucket_name, file_basename):
+    def s3_upload_img(self, s3_client, path, bucket_name, s3_file_name):
         """
         :param path:
         :param bucket_name:
-        :param file_basename: 확장자 없이. 확장자는 path에서 가져온다. 아직 basename이 아니라 경로가 들어오는 상황은 컨트롤 하지 못한다.
-        :return:
+        :param s3_file_name: 확장자 있어야한다.
+        :return: 접근 url을 반환.
         """
-        assert '.' not in file_basename, 'filename은 확장자(.)를 포함하지 않아야 합니다.'
-        assert '/' not in file_basename, 'filename은 /를 포함하지 않아야 합니다.'
+        # assert '.' not in s3_file_name, 'filename은 확장자(.)를 포함하지 않아야 합니다.'
+        # assert '/' not in s3_file_name, 'filename은 /를 포함하지 않아야 합니다.'
 
-        s3 = aws_core.s3_getclient()
         dirname, ext = os.path.splitext(path)
 
-        s3.upload_file(
+        s3_client.upload_file(
             path,  # "C:/Users/minkun/Downloads/이미지다운4.jpg", 확장자 까지 포함해야한다.
             bucket_name,  # 'my-shopping-img'
-            file_basename + ext,  # 'test3.jpg' 확장자 까지 제대로 붙여야한다. 이 이름으로 버킷에 저장된다.
+            s3_file_name,  # 'test3.jpg' 확장자 까지 제대로 붙여야한다. 이 이름으로 버킷에 저장된다.
             ExtraArgs={'ContentType': f"image/{ext[1:]}", 'ACL': "public-read"}  # content type을 설정해야 브라우저에서 올바르게 띄워준다.
 
         )
         base, ext = os.path.splitext(path)
-
-        url = aws_core.get_url(s3, file_basename+ext)
-
-
+        url = aws_core.get_url(s3_client, s3_file_name)
         return url
+
+    def s3_upload_img_all(self, s3_client, dirpath):
+        """
+        :param dirpath: 사진들이 저장되어 있는 dir 경로
+        :return: urls [url1, url2, url3,,]
+        """
+        files = os.listdir(dirpath)
+        urls=[]
+
+        for i in files:
+            path = dirpath+i
+            url = self.s3_upload_img(s3_client=s3_client, path=path, bucket_name=security.bucket_name, s3_file_name= i)
+            urls.append(url)
+
+        return urls
+
+
+
+
+
+
+
+
+
 
 
 
