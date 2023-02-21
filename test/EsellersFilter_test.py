@@ -8,6 +8,7 @@ from main.EsellersFilter import *
 from main.core import *
 import sys
 from PIL import Image
+from main.aws_core import *
 
 
 def init():
@@ -34,7 +35,7 @@ def init():
 #         df.to_excel(writer, sheet_name='기본정보', index=False)
 
 
-def test_option_add_price_filter(): # TODO : assert넣기
+def test_option_add_price_filter():
     ef = init()
     # ef1=ef.copy()
     # ef.option_add_price_filter()
@@ -42,7 +43,7 @@ def test_option_add_price_filter(): # TODO : assert넣기
     with pd.ExcelWriter('test.xlsx') as writer:
         ef.df_basic.to_excel(writer, index=False)
 
-def test_option50_over_filter(): # TODO : assert넣기
+def test_option50_over_filter():
     ef = init()
     d=ef.option50_over_filter()
     for i in d:
@@ -72,7 +73,21 @@ def test_img_size():
 def test_img_filter():
 
     ef=init()
-    ef.img_filter('resources/imgs/img_down_test/', 'resources/imgs/after_processing/', 0.02, 0.1) # 0.02가 딱 맞다.
+    ef.img_filter('resources/imgs/img_down_test/', 'resources/imgs/after_processing/', text_ratio=0.015, logo_ratio=0.15, text_loc= (10, 80), logo_loc=(10, 10) ) # 이 비율이 딱 예쁘다.
+
+
+
+def test_s3_upload_img(): # 테완
+    ef=init()
+    path = "C:/Users/minkun/Downloads/test.jpg"
+    bucket_name = 'my-shopping-img'
+    file_basename = 'test_upload_img_s3123123' # 확장자없이 사용.
+
+    url = ef.s3_upload_img(path=path, bucket_name=bucket_name, file_basename=file_basename) # url을 반환한다.
+    print(url) # url에 접속하면 사진이 뜬다.
+
+
+
 
 
 
@@ -84,7 +99,9 @@ def test_img_filter():
 # test_option_add_price_filter()
 # test_img_down_all()
 # test_img_size()
-test_img_filter()
+# test_img_filter()
+test_s3_upload_img()
+
 
 
 

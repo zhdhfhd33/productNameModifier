@@ -6,7 +6,10 @@ from main import core
 import urllib.request as req
 
 from PIL import Image, ImageFont, ImageDraw
-from IPython.display import display
+# import aws_core
+from main import aws_core
+
+
 
 
 class Option50Log():
@@ -208,7 +211,7 @@ class EsellersFilter:
             down_img(imglink_ser[i], save_path)
             print(save_path)
 
-    def img_filter(self, before_dirpath, after_dirpath, text_ratio, logo_ratio):
+    def img_filter(self, before_dirpath, after_dirpath, text_ratio, logo_ratio, text_loc, logo_loc):
         """
         :param before_dirpath: 마지막에 / 로 끝나야한다.
         :param after_dirpath: 마지막에 /로 끝나야 한다.
@@ -221,11 +224,7 @@ class EsellersFilter:
 
         imglist = os.listdir(before_dirpath)
         fontpath = 'C:/Users/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/main/resources/GmarketSansTTF/GmarketSansTTFBold.ttf'
-        # img = Image.open('이미지다운1.jpg')
-
         logo = Image.open('C:/Users\/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/main/resources/logo.png')
-
-        fontsize = 30  # 기본값.
 
         for i in imglist:
             img = Image.open(before_dirpath + i)
@@ -233,30 +232,51 @@ class EsellersFilter:
             x, y = img.size
             fontsize = int(x * text_ratio)
 
-            logo_x, logo_y = logo.size # 로고 크기
+            logo_x, logo_y = logo.size  # 로고 크기
             logo_coefficient = (x * logo_ratio) / logo_x  # logo_y * logo_coefficient 하면 x, y비율이 보존된다. 전체 크기의
             resized_logo = logo.resize((int(logo_x * logo_coefficient), int(logo_y * logo_coefficient)))
-            # TODO 이미지 위치 좀 더 밑에 해야한다. 좀 더 오른쪽
-
             font = ImageFont.truetype(fontpath, fontsize)
             imgdraw = ImageDraw.Draw(img)
-            imgdraw.text((10, 40), '넥스트 레벨 스토어(널리)', (0, 0, 0), font=font)  # (11,81,238) 파란색
+            imgdraw.text(text_loc, '넥스트 레벨 스토어(널리)', (0, 0, 0), font=font)  # (11,81,238) 파란색
             cv2_logo = core.piltocv2(resized_logo)
             cv2_img = core.piltocv2(img)
-            after_cv2_img = core.paste_logo(cv2_logo, cv2_img, 50, 40) # 로고 씌우기. 가로,세로
+            after_cv2_img = core.paste_logo(cv2_logo, cv2_img, *logo_loc)  # 로고 씌우기. 가로,세로. * = unpacking
             img = core.cv2topil(after_cv2_img)
             # img.paste(im=resized_logo, box=(fontsize + 25, fontsize + 10))  # 사진 덮어 씌우기.
             after_path = after_dirpath + i
-            img.save(after_path)
-            print(after_path)
+            img.save(after_path)  # 이미지 저장.
+            print(f'img after_path : {after_path}')
+            # 이미지 한번에 for문으로 읽으면 터질듯. with으로 open close해야한다. 여기선 그런게 없기 때문에 알아서 갈비지 컬렉션 할듯??..
+            return after_path
 
-        # 이미지읽기
-        # 사이즈 변경
-        # 노이즈 추가
-        # 배경제거 - 쉽지않다.
-        # 사이드에 글이나 사진 추가
-        # img 반환
-        # 이미지 한번에 for문으로 읽으면 터질듯. with으로 open close해야한다.
+
+    def s3_upload_img(self, path, bucket_name, file_basename):
+        """
+        :param path:
+        :param bucket_name:
+        :param file_basename: 확장자 없이. 확장자는 path에서 가져온다. 아직 basename이 아니라 경로가 들어오는 상황은 컨트롤 하지 못한다.
+        :return:
+        """
+        assert '.' not in file_basename, 'filename은 확장자(.)를 포함하지 않아야 합니다.'
+        assert '/' not in file_basename, 'filename은 /를 포함하지 않아야 합니다.'
+
+        s3 = aws_core.s3_getclient()
+        dirname, ext = os.path.splitext(path)
+
+        s3.upload_file(
+            path,  # "C:/Users/minkun/Downloads/이미지다운4.jpg", 확장자 까지 포함해야한다.
+            bucket_name,  # 'my-shopping-img'
+            file_basename + ext,  # 'test3.jpg' 확장자 까지 제대로 붙여야한다. 이 이름으로 버킷에 저장된다.
+            ExtraArgs={'ContentType': f"image/{ext[1:]}", 'ACL': "public-read"}  # content type을 설정해야 브라우저에서 올바르게 띄워준다.
+
+        )
+        base, ext = os.path.splitext(path)
+
+        url = aws_core.get_url(s3, file_basename+ext)
+
+
+        return url
+
 
 
 if __name__ == '__main__':
