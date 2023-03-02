@@ -1,12 +1,9 @@
 import sys
 sys.path.append('C:/Users/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/main')
 
-
-import os.path
-import pandas as pd
 from main.ProductNameModifier import ProductNameModifier
 
-from main.EsellersFilter import *
+from main.stores.EsellersFilter import *
 from main.core import *
 if __name__ == '__main__':
     # pd config

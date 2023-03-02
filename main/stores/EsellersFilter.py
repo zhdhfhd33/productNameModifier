@@ -227,7 +227,7 @@ class EsellersFilter:
 
         imglist = os.listdir(before_dirpath)
         fontpath = 'C:/Users/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/main/resources/GmarketSansTTF/GmarketSansTTFBold.ttf'
-        logo = Image.open('C:/Users\/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/main/resources/logo.png')
+        logo = Image.open('/main/resources/logo.png')
 
         for i in imglist:
             img = Image.open(before_dirpath + i)

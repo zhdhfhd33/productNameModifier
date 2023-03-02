@@ -1,12 +1,9 @@
 import sys, os
 
-import numpy as np
-
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from main.EsellersFilter import *
+from main.stores.EsellersFilter import *
 from main.core import *
-import sys
 from PIL import Image
 from main.aws_core import *
 

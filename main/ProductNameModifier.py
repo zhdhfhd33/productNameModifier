@@ -1,11 +1,15 @@
+import os
 import re
-from ReplacePair import ReplacePair
-from DelLog import DelLog
 
-from DelLogs import DelLogs
-import pandas as pd
+from main.core.core import *
+from main.vo.ReplacePair import ReplacePair
+from main.vo.DelLog import DelLog
+
+from main.vo.DelLogs import DelLogs
 import random
 from core import *
+import pandas as pd
+
 
 class ProductNameModifier():
     def __init__(self, df, product_col_name, keyword_df):
@@ -54,7 +58,6 @@ class ProductNameModifier():
         df를 받는 것 보다는 계속 리스트를 인자로 받는 것이 일관성 있다. 일관성이 코딩에 중요하다!
         :return: [newName1, newName2,,,]
         """
-
         # 제대로 동작하기 위해서는 글자수가 긴 것 부터 해야한다.
         keywords.sort(key=lambda x: len(x))
         keywords = keywords[::-1]
@@ -142,7 +145,7 @@ class ProductNameModifier():
         sum_del_logs = del_logs + del_logs2  # del_log 합치기
         return filtered_names, sum_del_logs
 
-    def contain_row_drop(self, keywords):
+    def contain_row_drop_filter(self, keywords):
         """
         :keywords = regexp형식. '랜덤|새총|새 총|섹시|sexy'
         :return = 삭제된 cnt, 삭제 후 row cnt
@@ -207,7 +210,6 @@ class ProductNameModifier():
         """
 
         del_logs = DelLogs()
-
         # 원본출력
         print('origin : ', self.df[self.product_col_name].count())
         print(self.df[self.product_col_name].head(10))
@@ -216,62 +218,22 @@ class ProductNameModifier():
         print()
 
         # 들어있다면 row 자체를 삭제. 젤 먼저 해야한다.
-        row_drop_keyword = '랜덤|렌덤|새총|새 총|섹시|sexy|칼 |나이프|리얼돌|토르소|티팬티|티펜티|해외|음경'
-        del_cnt, row_cnt = self.contain_row_drop(row_drop_keyword)
+        row_drop_keyword = '랜덤|렌덤|새총|새 총|섹시|sexy|칼 |나이프|리얼돌|토르소|티팬티|티펜티|해외|음경|방문설치|국내산'
+        del_cnt, row_cnt = self.contain_row_drop_filter(row_drop_keyword)
         print('booleanFilter count : ', del_cnt)
         print('row 삭제 후 상품명: ', row_cnt)
         print()
         print()
 
-        # 젤 앞에 []는 무조건 브랜드임. 정규식을 삭제
+        # 젤 앞에 []는 무조건 브랜드임. 정규식을 삭제. 젤 앞에 있는 브랜드 삭제.
         targetStrs = [
             r'^\[.+\]'  # ^는 시작을 의미.
         ]
         absolute_brand_filtered, absolute_brand_log = self.removeReg(targetStrs)
         del_logs.absolute_brand_log = (absolute_brand_log)
 
-        # 이름이 완벽하게 같을 때만 삭제
-        self.remove_duplicated_filter()
-
-
-        # 키워드 지우기
-        col_before = '변경 전'
-        col_after = '변경 후'
-        removingStrs = self.keyword_df[col_before].tolist()
-        replaces = self.keyword_df[col_after].tolist()
-        before_len = len(removingStrs)
-        removingStrs_set = set(removingStrs)  # 중복지우기
-        after_len = len(removingStrs_set)
-        removingStrs = list(removingStrs_set)
-        print('중복되는 키워드 개수 : ', before_len - after_len)
-        charFiltered, keyword_log = self.remove_keywords(removingStrs, replaces)  # 새로운 배열을 return한다.
-        del_logs.keyword_log = (keyword_log)
-        # tmpSeries = (charFiltered)
-        # print(tmpSeries)
-        # myFilter.df[product_col_name] =  charFiltered # 데이터 프레임에 추가될 때는 인덱스를 기준으로 추가된다. 앞에서 잘랐기 때문에 인덱스가 1부터 시작된다. 0부터 있어서 문제가 되었던 것이다.
-        print('키워드 지우기')
-        print(self.df[self.product_col_name].head(10))
-        print(self.df[self.product_col_name].count())
-        print()
-        print()
-
-        # 정규표현식 삭제
-        # re.sub를 사용할 떈 //g를 사용하면 안된다.
-        targetStrs = [
-            r'[0-9a-zA-Z]+-[0-9a-zA-Z]+',  # DP-1234,
-            r'[a-zA-Z]{2}[0-9]{3,}',  # DB12 //잘못하면 USB2 이런것도 걸린다. x12 이런게 같이 걸림. W019..이건 양보하자.
-            r'^[0-9]+\.',  # 09. 발가락 보호대. 12. 허리보호대
-            r'^[0-9]{4,}',  # 1000 발가락 보호대, 2500 손소독제 이런 이름이 있다.
-            r'[0-9]{5,9}',  # 숫자5개 이상연속
-            r'[0-9]+원'  # 숫자+원
-
-        ]
-        regFiltered, regexp_log = self.removeReg(targetStrs)
-        del_logs.regexp_log = (regexp_log)
-
-        # 특수문자 제거
-        # 특수문자는는 페이스로 대체. 스페이스가 2개 되더라도 나중에 뒤에서 스페이스 여러개 처리하기 때문에 상관 x
-
+        # 특수문자 제거. 특수문자는 미리 제거하는게 뒤에서 더 이롭다.
+        # 특수문자는는 페이스로 대체. 스페이스가 2개 되더라도 나중에 뒤에서 스페이스 여러개 처리하기 때문에 상관 x.
         replace_pairs = []
         replace_pairs.append(ReplacePair(r'\/', ' '))  # . regexp일 때는 괄호도 이스케이프 해야함. regexp에서 특수문자기 때문.
         replace_pairs.append(ReplacePair(r'\(', ' '))
@@ -291,14 +253,65 @@ class ProductNameModifier():
         print()
         print()
 
-        # myFilter.df[product_col_name] = (regFiltered)
-        print('regex 필터')
+        # 이름이 완벽하게 같을 때만 삭제.
+        self.remove_duplicated_filter()
+
+        # TODO : 키워드이기 때문에 키워드 마지막에 스페이스를 붙일까 말까?...
+
+        # cols = [('변경 전', '변경 후')]
+        col_before='변경 전'
+        col_after='변경 후'
+        # removing_strs=[]
+        # replaces=[]
+        # for i in cols:
+        #     removing_strs += self.keyword_df[i[0]].tolist()
+        #     replaces += self.keyword_df[i[1]].tolist()
+        removing_strs = self.keyword_df[col_before].tolist()
+        replaces = self.keyword_df[col_after].tolist()
+        before_len = len(removing_strs)
+        removing_strs_set = set(removing_strs)  # 중복지우기
+        after_len = len(removing_strs_set)
+        removingStrs = list(removing_strs_set)
+        print('중복되는 키워드 개수 : ', before_len - after_len)
+        charFiltered, keyword_log = self.remove_keywords(removingStrs, replaces)  # 새로운 배열을 return한다. 내부적으로 정규표현식을 사용하기 때문에 이게 가능. 
+        del_logs.keyword_log = (keyword_log)
+        # tmpSeries = (charFiltered)
+        # print(tmpSeries)
+        # myFilter.df[product_col_name] =  charFiltered # 데이터 프레임에 추가될 때는 인덱스를 기준으로 추가된다. 앞에서 잘랐기 때문에 인덱스가 1부터 시작된다. 0부터 있어서 문제가 되었던 것이다.
+        print('키워드 지우기')
         print(self.df[self.product_col_name].head(10))
+        print(self.df[self.product_col_name].count())
         print()
         print()
+        
+        # TODO 키워드 삭제. 정규표현식, 정규표현식 변경 후
+        # 위에서 같이 진행할 수도 있지만 정리를 위해서 따로 하자.!
+
+
+
+
+        # 정규표현식 삭제
+        # re.sub를 사용할 떈 //g를 사용하면 안된다.
+        targetStrs = [
+            r'[0-9a-zA-Z]+-[0-9a-zA-Z]+',  # DP-1234,
+            r'[a-zA-Z]{2}[0-9]{3,}',  # DB12 //잘못하면 USB2 이런것도 걸린다. x12 이런게 같이 걸림. W019..이건 양보하자.
+            r'^[0-9]+\.',  # 09. 발가락 보호대. 12. 허리보호대
+            r'^[0-9]{4,}',  # 1000 발가락 보호대, 2500 손소독제 이런 이름이 있다.
+            r'[0-9]{5,9}',  # 숫자5개 이상연속
+            r'[0-9]+원'  # 숫자+원
+
+        ]
+        regFiltered, regexp_log = self.removeReg(targetStrs)
+        del_logs.regexp_log = (regexp_log)
+
+        # myFilter.df[product_col_name] = (regFiltered)
+        # print('regex 필터')
+        # print(self.df[self.product_col_name].head(10))
+        # print()
+        # print()
         return del_logs
 
-    def process(self):
+    def process(self, random=False):
         """
         올인원 함수. 함수 호출 하나로 모두 해결가능하게
         쿠팡은 아니다.
@@ -321,13 +334,13 @@ class ProductNameModifier():
         print()
         print()
 
-        self.random_mix_filter() #젤 마지막에 호출해야한다.
+        if (random):
+            self.random_mix_filter()  # 젤 마지막에 호출해야한다.
         return del_logs
 
-
-
-    def process_coupang(self):
+    def process_coupang(self, random=False):
         """
+        쿠팡을 위한 프로세스. 브랜드 처리를 해야한다.
         """
         del_logs = self.__process1()
 
@@ -373,6 +386,74 @@ class ProductNameModifier():
         print()
         print()
 
-        self.random_mix_filter()
+        if random:
+            self.random_mix_filter()
 
         return del_logs
+
+    def to_xlsx(self, path):
+
+        """
+        self.df를 저장하는 함수. path는 변환 전의 파일경로를 입력하면 된다.
+        :param path:
+        :return:
+        """
+        file_name, ext = get_file_name(path, sep='/')
+        extension = '.xlsx'
+        cnt = 1
+        dir_name1 = 'resources/resXls'
+        file_path = dir_name1 + '/' + file_name + '_' + str(cnt) + extension
+        file_path = make_cnt_path(file_path)
+
+        with pd.ExcelWriter(file_path) as writer:
+            self.df.to_excel(writer, sheet_name='기본정보', index=False)
+
+        print(f'fileName : {file_path}')
+
+
+if __name__ == '__main__':
+    pdConfig()
+    keyword_path = 'resources/상품명가공 키워드지우기 리스트.xlsx'
+
+    # \하나는 인식못한다. /를 쓰거나 \\ 2개 써야 함. 밑에 함수떄문에 /를 써야한다.
+    path = r"C:\Users\minkun\OneDrive\minkun\pyCharmWP\productNameModifier\main\resources\도매매_concat.xlsx"  # 이걸 고정으로 쓰면 된다.
+    path = path.replace('\\', '/')
+
+    # 읽기
+    df = pd.read_excel(path)
+    keyword_df = pd.read_excel(keyword_path)  # 키워드 삭제는 엑셀로 관리한다.
+
+    # df 전처리
+    df.drop(inplace=True, index=0, axis=0)  # 행삭제. 행을 삭제해도 인덱스는 그대로 남아있다. 재정렬 안된다.
+    keyword_df['변경 후'].fillna(' ', inplace=True)  # 엑셀에서 없으면 NA로 표시된다.
+
+    keyword_df = keyword_df.astype({'변경 전': 'string', '변경 후': 'string'})
+
+    product_col_name = '상품명'
+    name_modifier = ProductNameModifier(df=df, product_col_name=product_col_name, keyword_df=keyword_df)
+
+    # ----------------------------init-----------------------------
+    """
+    process() or process_coupang() 실행시키면 된다.
+    """
+    # del_logs=myFilter.process()
+    del_logs = name_modifier.process_coupang()  # 귀찮아서 쿠팡으로 한번에 진행.
+
+    # --------------------------- 최종출력-----------------------------
+    # 마지막에 젶 앞에 잉여행 추가해줘야한다.
+    insert_df = pd.DataFrame([[' '] * len(name_modifier.df.columns)], columns=name_modifier.df.columns)
+    name_modifier.df = pd.concat([insert_df, name_modifier.df], ignore_index=True)
+
+    file_name, ext = get_file_name(path, sep='/')  # path = 원본 xls파일.
+    extension = '.xlsx'
+    dir_name = 'resources/resXls/'
+    file_path = dir_name + file_name + '_modified' + extension
+    cnt_path = make_cnt_path(file_path)
+
+    with pd.ExcelWriter(cnt_path) as writer:
+        name_modifier.df.to_excel(writer, sheet_name='기본정보', index=False)
+    print(f'modified xlsx path : {cnt_path}')
+
+    del_log_path = 'resources/del_log/del_log_' + file_name + extension
+    del_logs.to_xlsx(del_log_path)
+    print(f'del_log file path : {del_log_path}')
