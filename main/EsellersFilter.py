@@ -214,11 +214,13 @@ class EsellersFilter:
 
     def img_filter(self, before_dirpath, after_dirpath, text_ratio, logo_ratio, text_loc, logo_loc):
         """
-        :param before_dirpath: 마지막에 / 로 끝나야한다.
-        :param after_dirpath: 마지막에 /로 끝나야 한다.
+        이미지를 읽어서 로고 삽입 이후 after dirpath에 저장한다.
+
+        :param before_dirpath: 원본 이미지들이 있는 dir path. 마지막에 / 로 끝나야한다.
+        :param after_dirpath: 수정된 이미지들이 저장될 dir path. 존재하지 않아도 된다. 마지막에 /로 끝나야 한다.
         :param text_ratio 0.1 # 10%
         :param y_ratio 0.1 # 10%
-        :return:
+        :return: None
         """
         if not os.path.isdir(after_dirpath):  # after_dirpath 없을 때만 만든다.
             os.makedirs(after_dirpath)
@@ -248,11 +250,13 @@ class EsellersFilter:
             img.save(after_path)  # 이미지 저장.
             print(f'img after_path : {after_path}')
             # 이미지 한번에 for문으로 읽으면 터질듯. with으로 open close해야한다. 여기선 그런게 없기 때문에 알아서 갈비지 컬렉션 할듯??..
-            return after_path
+        return
 
 
     def s3_upload_img(self, s3_client, path, bucket_name, s3_file_name):
         """
+        S3에 이미지를 업로드한다.
+        :param s3_client s3객체
         :param path:
         :param bucket_name:
         :param s3_file_name: 확장자 있어야한다.
@@ -288,14 +292,6 @@ class EsellersFilter:
             urls.append(url)
 
         return urls
-
-
-
-
-
-
-
-
 
 
 

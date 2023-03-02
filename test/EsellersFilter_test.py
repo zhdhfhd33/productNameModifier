@@ -90,8 +90,10 @@ def test_s3_upload_img(): # 테완
 
 def test_s3_upload_img_all():
     ef=init()
-    urls = ef.s3_upload_img_all('C:/Users/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/test/resources/imgs/after_processing/') # 상대경로를 넣으면 안된다. 항상 절대경로를 사용해야한다. 테스트 프레임웤이 아니라서 main으로 넘어가면 경로가 달라진다..
+    s3= aws_core.s3_getclient()
 
+    # 상대경로를 넣으면 안된다. 항상 절대경로를 사용해야한다. 테스트 프레임웤이 아니라서 main으로 넘어가면 경로가 달라진다..
+    urls = ef.s3_upload_img_all(s3_client=s3, dirpath = 'C:/Users/minkun/OneDrive/minkun/pyCharmWP/productNameModifier/test/resources/imgs/after_processing/')
 
 
     for i in urls:
@@ -111,9 +113,9 @@ def test_s3_upload_img_all():
 # test_img_down_all()
 # test_img_size()
 # test_img_filter()
-test_s3_upload_img()
+# test_s3_upload_img()
 
-# test_s3_upload_img_all()
+test_s3_upload_img_all()
 
 
 
