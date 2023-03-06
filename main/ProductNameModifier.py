@@ -12,23 +12,33 @@ import pandas as pd
 
 
 class ProductNameModifier():
-    def __init__(self, df, product_col_name, keyword_df):
+    def __init__(self, df, product_col_name, keyword_df, reg_df):
+
         """
         df = param df:
         product_col_name = ex) '상품명' or '상품명*'
         """
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(product_col_name, str)
+        assert isinstance(keyword_df, pd.DataFrame)
+        assert isinstance(reg_df, pd.DataFrame)
+
         self.df = df
         self.product_col_name = product_col_name
         self.keyword_df = keyword_df
+        self.reg_df = reg_df
         # self.del_logs=[] process, process_coupang 둘 다 호출할 수 있으니까 멤버로 두면 안된다.
 
-    def __replaceRegexpStrs(self, targetStrs, replaceStrs):
+    def __replace_regexp(self, targetStrs, replaceStrs):
         """
         코어함수 private
         :param targetStrs: 바꾸고자 하는 문자열
         :param repalceStrs: 이 문자열로 바꾸자
         :return: filteredNames, del_logs
         """
+        assert len(targetStrs)==len(replaceStrs), f'{len(targetStrs)}=={len(replaceStrs)}'
+
+
         productNames = self.df[self.product_col_name].tolist()
         filteredNames = []
         del_logs = []
@@ -43,7 +53,8 @@ class ProductNameModifier():
                     endIdx = indicies[k].span()[1]
                     del_content = filteredName[startIdx:endIdx]
                     filteredName = filteredName[:startIdx] + replaceStrs[j] + filteredName[endIdx:]
-                    del_logs.append(DelLog(i, del_content, val_j))
+                    del_logs.append(DelLog(i,  replaceStrs[j], del_content))
+
 
             filteredNames.append(filteredName if filteredName != '' else val_i)
         return filteredNames, del_logs
@@ -63,7 +74,7 @@ class ProductNameModifier():
         keywords = keywords[::-1]
 
         # replacekeywords = [''] * len(keywords)
-        filteredNames, delLogs = self.__replaceRegexpStrs(keywords, replaces)
+        filteredNames, delLogs = self.__replace_regexp(keywords, replaces)
 
         # 대입
         self.df[self.product_col_name] = filteredNames
@@ -79,7 +90,7 @@ class ProductNameModifier():
         for i in replace_pairs:
             target_strs.append(i.target)
             replace_strs.append(i.replace)
-        filtered_names, del_logs = self.__replaceRegexpStrs(target_strs, replace_strs)
+        filtered_names, del_logs = self.__replace_regexp(target_strs, replace_strs)
 
         # 대입
         self.df[self.product_col_name] = filtered_names
@@ -98,21 +109,20 @@ class ProductNameModifier():
             trimedStr.append(newStr)
         return trimedStr
 
-    def removeReg(self, regStrs):
+    def replace_reg_filter(self, regs,replaces ):
         """
         정규표현식으로 제거
         :param regStrs: [r's+' r'(0-9)+', ,,,,]
         :return: regStrs에 해당하는 부분을 찾아서 없앤다.
         """
-        tmp = [''] * len(regStrs)
 
-        filteredNames, del_logs, = self.__replaceRegexpStrs(regStrs, tmp)
+        filteredNames, del_logs, = self.__replace_regexp(regs, replaces)
 
         # 대입
         self.df[self.product_col_name] = filteredNames
         return filteredNames, del_logs
 
-    def brandFilter(self, replace_pairs):
+    def brand_filter(self, replace_pairs):
         """
         :param regStrs: ['갤럭시', '갤럭시 워치', '애플',,,]
         :param tmp: ['갤럭시 호환', '갤럭시 워치 호환', '애플 호환',,,]
@@ -123,7 +133,7 @@ class ProductNameModifier():
         for i_val in replace_pairs:
             target_strs.append(i_val.target)
             replace_strs.append(i_val.replace)
-        filtered_names, del_logs = self.__replaceRegexpStrs(target_strs, replace_strs)
+        filtered_names, del_logs = self.__replace_regexp(target_strs, replace_strs)
 
         # 호환 여러번 들어가면 젤 뒤의 호환만 남긴다.
         # 마지막에 '호환' 하나는 놔두고 지워야하기 때문에 새로 구현할 수 밖에 없었다.
@@ -133,16 +143,17 @@ class ProductNameModifier():
         regex = re.compile(r'호환')
         for i, i_val in enumerate(filtered_names):
             indicies = [_ for _ in re.finditer(regex, i_val)]
-            list_i = list(i_val)  # str to list
+            list_i = list(i_val)  # str to list, 문자열을 list로 바꿈. 다루기 쉽다. immutable도 아니어서 메모리 절약!
             if len(indicies) > 1:  # 호환이 여러 개 일때
                 for j in range(len(indicies) - 2, -1, -1):  # 거꾸로 해야 del 가능. 마지막 하나는 남겨둬야하기 때문에 -2.
                     start_idx = indicies[j].span()[0]
                     end_idx = indicies[j].span()[1]
-                    del_logs2.append(DelLog(i, ''.join(list_i[start_idx:end_idx]), '제거'))
+                    del_logs2.append(DelLog(i,  '', ''.join(list_i[start_idx:end_idx])))
                     del list_i[start_idx:end_idx]
             filtered_names2.append(''.join(list_i))
         self.df[self.product_col_name] = filtered_names2  # 대입
-        sum_del_logs = del_logs + del_logs2  # del_log 합치기
+        sum_del_logs = del_logs + del_logs2  # 'replace reg exp'와 '호환제거'의 del_log 합치기
+
         return filtered_names, sum_del_logs
 
     def contain_row_drop_filter(self, keywords):
@@ -226,11 +237,11 @@ class ProductNameModifier():
         print()
 
         # 젤 앞에 []는 무조건 브랜드임. 정규식을 삭제. 젤 앞에 있는 브랜드 삭제.
-        targetStrs = [
-            r'^\[.+\]'  # ^는 시작을 의미.
-        ]
-        absolute_brand_filtered, absolute_brand_log = self.removeReg(targetStrs)
-        del_logs.absolute_brand_log = (absolute_brand_log)
+        # targetStrs = [
+        #     r'^\[.+\]'  # ^는 시작을 의미.
+        # ]
+        # absolute_brand_filtered, absolute_brand_log = self.removeReg(targetStrs)
+        # del_logs.absolute_brand_log = (absolute_brand_log)
 
         # 특수문자 제거. 특수문자는 미리 제거하는게 뒤에서 더 이롭다.
         # 특수문자는는 페이스로 대체. 스페이스가 2개 되더라도 나중에 뒤에서 스페이스 여러개 처리하기 때문에 상관 x.
@@ -256,24 +267,31 @@ class ProductNameModifier():
         # 이름이 완벽하게 같을 때만 삭제.
         self.remove_duplicated_filter()
 
-        # TODO : 키워드이기 때문에 키워드 마지막에 스페이스를 붙일까 말까?...
-
+        # TODO : 키워드이기 때문에 키워드 마지막에 스페이스를 붙일까 말까?... 고민거리임. 나중에 생각하자.
         # cols = [('변경 전', '변경 후')]
-        col_before='변경 전'
-        col_after='변경 후'
-        # removing_strs=[]
-        # replaces=[]
-        # for i in cols:
-        #     removing_strs += self.keyword_df[i[0]].tolist()
-        #     replaces += self.keyword_df[i[1]].tolist()
+        col_before = '변경 전'
+        col_after = '변경 후'
         removing_strs = self.keyword_df[col_before].tolist()
         replaces = self.keyword_df[col_after].tolist()
         before_len = len(removing_strs)
-        removing_strs_set = set(removing_strs)  # 중복지우기
-        after_len = len(removing_strs_set)
-        removingStrs = list(removing_strs_set)
+
+        # 중복제거
+        tmp = np.array(removing_strs)
+        for i in removing_strs:
+            idxs = np.where(tmp==i)
+            if len(idxs)>1:
+                for j in idxs:
+                    del removing_strs[j]
+                    del replaces[j]
+
+
+        # removing_strs_set = set(removing_strs)  # 중복지우기
+        after_len = len(removing_strs)
+        removingStrs = list(removing_strs)
         print('중복되는 키워드 개수 : ', before_len - after_len)
-        charFiltered, keyword_log = self.remove_keywords(removingStrs, replaces)  # 새로운 배열을 return한다. 내부적으로 정규표현식을 사용하기 때문에 이게 가능. 
+        char_filtered, keyword_log = self.remove_keywords(removingStrs,
+                                                          replaces)  # 새로운 배열을 return한다. 내부적으로 정규표현식을 사용하기 때문에 이게 가능.
+
         del_logs.keyword_log = (keyword_log)
         # tmpSeries = (charFiltered)
         # print(tmpSeries)
@@ -283,25 +301,22 @@ class ProductNameModifier():
         print(self.df[self.product_col_name].count())
         print()
         print()
-        
-        # TODO 키워드 삭제. 정규표현식, 정규표현식 변경 후
-        # 위에서 같이 진행할 수도 있지만 정리를 위해서 따로 하자.!
-
-
-
 
         # 정규표현식 삭제
         # re.sub를 사용할 떈 //g를 사용하면 안된다.
-        targetStrs = [
-            r'[0-9a-zA-Z]+-[0-9a-zA-Z]+',  # DP-1234,
-            r'[a-zA-Z]{2}[0-9]{3,}',  # DB12 //잘못하면 USB2 이런것도 걸린다. x12 이런게 같이 걸림. W019..이건 양보하자.
-            r'^[0-9]+\.',  # 09. 발가락 보호대. 12. 허리보호대
-            r'^[0-9]{4,}',  # 1000 발가락 보호대, 2500 손소독제 이런 이름이 있다.
-            r'[0-9]{5,9}',  # 숫자5개 이상연속
-            r'[0-9]+원'  # 숫자+원
-
-        ]
-        regFiltered, regexp_log = self.removeReg(targetStrs)
+        # targetStrs = [
+        #     r'[0-9a-zA-Z]+-[0-9a-zA-Z]+',  # DP-1234,
+        #     r'[a-zA-Z]{2}[0-9]{3,}',  # DB12 //잘못하면 USB2 이런것도 걸린다. x12 이런게 같이 걸림. W019..이건 양보하자.
+        #     r'^[0-9]+\.',  # 09. 발가락 보호대. 12. 허리보호대
+        #     r'^[0-9]{4,}',  # 1000 발가락 보호대, 2500 손소독제 이런 이름이 있다.
+        #     r'[0-9]{5,9}',  # 숫자5개 이상연속
+        #     r'[0-9]+원'  # 숫자+원
+        #
+        # ]
+        # 정규표현식을 엑셀로 바꿈.
+        regs = self.reg_df['정규표현식'].tolist()
+        replaces = self.reg_df['변경 후'].tolist()
+        regFiltered, regexp_log = self.replace_reg_filter(regs, replaces)
         del_logs.regexp_log = (regexp_log)
 
         # myFilter.df[product_col_name] = (regFiltered)
@@ -367,7 +382,7 @@ class ProductNameModifier():
         # brand_replace_pairs.append(ReplacePair('호환 호환', '호환 '))
         # brand_replace_pairs.append(ReplacePair('호환  호환', '호환 '))
 
-        brand_filterd, coupang_brand_filter_log = self.brandFilter(brand_replace_pairs)
+        brand_filterd, coupang_brand_filter_log = self.brand_filter(brand_replace_pairs)
         del_logs.coupang_brand_filter_log = (coupang_brand_filter_log)
 
         # 좌우 공백 삭제, strip. 인덱스가 1부터 시작인 상황.
@@ -412,33 +427,36 @@ class ProductNameModifier():
 
 
 if __name__ == '__main__':
+    # ----------------------------init-----------------------------
     pdConfig()
     keyword_path = 'resources/상품명가공 키워드지우기 리스트.xlsx'
+    reg_path = r'C:\Users\minkun\OneDrive\minkun\pyCharmWP\productNameModifier\main\resources\정규표현식 리스트.xlsx'.replace(
+        '\\', '/')
 
     # \하나는 인식못한다. /를 쓰거나 \\ 2개 써야 함. 밑에 함수떄문에 /를 써야한다.
-    path = r"C:\Users\minkun\OneDrive\minkun\pyCharmWP\productNameModifier\main\resources\도매매_concat.xlsx"  # 이걸 고정으로 쓰면 된다.
-    path = path.replace('\\', '/')
+    path = r"C:\Users\minkun\OneDrive\minkun\pyCharmWP\productNameModifier\main\resources\도매매_concat.xlsx".replace('\\', '/')  # 이걸 고정으로 쓰면 된다.
 
     # 읽기
     df = pd.read_excel(path)
     keyword_df = pd.read_excel(keyword_path)  # 키워드 삭제는 엑셀로 관리한다.
+    reg_df = pd.read_excel(reg_path)
 
-    # df 전처리
+    # ProductNameModifier 생성
     df.drop(inplace=True, index=0, axis=0)  # 행삭제. 행을 삭제해도 인덱스는 그대로 남아있다. 재정렬 안된다.
-    keyword_df['변경 후'].fillna(' ', inplace=True)  # 엑셀에서 없으면 NA로 표시된다.
-
+    keyword_df['변경 후'].fillna(' ', inplace=True)  # 엑셀에서 빈칸은 NA로 표시된다.
+    reg_df['변경 후'].fillna(' ', inplace=True)  # 엑셀에서 빈칸은 NA로 표시된다.
     keyword_df = keyword_df.astype({'변경 전': 'string', '변경 후': 'string'})
-
+    reg_df = reg_df.astype({'정규표현식': 'string', '변경 후': 'string'})
     product_col_name = '상품명'
-    name_modifier = ProductNameModifier(df=df, product_col_name=product_col_name, keyword_df=keyword_df)
+    name_modifier = ProductNameModifier(df=df, product_col_name=product_col_name, keyword_df=keyword_df, reg_df=reg_df)
 
-    # ----------------------------init-----------------------------
+
+    # -------------------process-------------------------------------
     """
     process() or process_coupang() 실행시키면 된다.
     """
     # del_logs=myFilter.process()
     del_logs = name_modifier.process_coupang()  # 귀찮아서 쿠팡으로 한번에 진행.
-
     # --------------------------- 최종출력-----------------------------
     # 마지막에 젶 앞에 잉여행 추가해줘야한다.
     insert_df = pd.DataFrame([[' '] * len(name_modifier.df.columns)], columns=name_modifier.df.columns)
