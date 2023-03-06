@@ -275,7 +275,7 @@ class ProductNameModifier():
         replaces = self.keyword_df[col_after].tolist()
         before_len = len(removing_strs)
 
-        # 중복제거
+        # 중복제거. replaces도 인덱스를 같이 지워야한다.
         tmp = np.array(removing_strs)
         for i in removing_strs:
             idxs = np.where(tmp==i)
@@ -283,10 +283,8 @@ class ProductNameModifier():
                 for j in idxs:
                     del removing_strs[j]
                     del replaces[j]
-
-
-        # removing_strs_set = set(removing_strs)  # 중복지우기
         after_len = len(removing_strs)
+        assert before_len > after_len, f'{before_len} > {after_len}'
         removingStrs = list(removing_strs)
         print('중복되는 키워드 개수 : ', before_len - after_len)
         char_filtered, keyword_log = self.remove_keywords(removingStrs,
